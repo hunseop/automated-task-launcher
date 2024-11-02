@@ -1,0 +1,85 @@
+개발 가이드라인
+
+1. 아키텍처 개요
+
+개발 환경:
+
+	•	프론트엔드: Electron (데스크탑 전환), React, Tailwind CSS, TanStack Table, ShadCN/UI
+	•	백엔드: FastAPI (Python)
+	•	데이터베이스: SQLite (경량, 내장형 DB)
+	•	데이터 처리: Pandas (결과 데이터 가공 및 엑셀 내보내기)
+
+2. 프론트엔드 개발 가이드라인
+
+2.1 주요 페이지 및 컴포넌트 구조
+
+	1.	Project 보드 리스트 페이지: 사용자가 모든 Project를 한눈에 관리할 수 있는 페이지
+	•	ProjectCard 컴포넌트: 각 Project를 카드 형태로 표현하여, 진행 상태, 이름, 생성 날짜를 표시.
+	•	New Project 버튼: 새로운 Project 생성 UI를 제공하며, 선택된 Workflow에 따라 고정된 Task List를 불러옴.
+	•	Project 상태 필터: 대기 중, 진행 중, 완료 상태로 필터링 가능.
+	2.	Project 상세 페이지: 특정 Project의 진행 상태와 Task를 표시하는 페이지
+	•	TaskList 컴포넌트: Project에 포함된 Task들을 순차적으로 보여줌.
+	•	TaskCard 컴포넌트: 각 Task의 정보를 표시하고, 필요한 사용자 입력 필드 및 상태 업데이트 버튼 포함.
+	•	Task 결과 컴포넌트: 각 Task 완료 후 표시될 결과 컴포넌트 (데이터 테이블, 차트 등 다양한 형태로 구성 가능).
+	•	Task 상태 업데이트 및 순차 실행: 각 Task가 완료되면 자동으로 다음 Task가 활성화되도록 이벤트 핸들링 추가.
+	3.	결과 테이블 컴포넌트: 검색, 필터링, 엑셀 파일 내보내기 기능을 제공하는 결과 테이블 컴포넌트
+	•	TanStack Table을 사용한 테이블 구성: 반응형 UI 지원 및 데이터 필터링 기능 제공.
+	•	엑셀 다운로드 버튼: 필터링된 데이터를 Pandas로 가공 후 엑셀 파일로 변환하여 다운로드.
+
+2.2 UI/UX 디자인 원칙
+
+	•	일관된 스타일 적용: Tailwind CSS와 ShadCN/UI를 활용하여 전체적인 UI 스타일 일관성 유지.
+	•	직관적인 네비게이션: 복잡한 메뉴 대신, 사용자가 쉽게 프로젝트를 생성하고 관리할 수 있도록 직관적이고 단순한 네비게이션 제공.
+	•	모듈식 컴포넌트 설계: 재사용 가능한 컴포넌트로 설계하여 유지보수성과 확장성 강화.
+
+3. 백엔드 개발 가이드라인
+
+3.1 API 설계 (FastAPI)
+
+	1.	Project 생성 및 관리 API
+	•	POST /api/projects: 새로운 Project 생성. Project 생성 시 선택된 Workflow에 따라 Task List가 자동으로 불러와짐.
+	•	GET /api/projects: 모든 Project 리스트 조회 (필터링 옵션 포함).
+	•	GET /api/projects/{project_id}: 특정 Project의 상세 정보 및 Task 진행 상태 조회.
+	•	DELETE /api/projects/{project_id}: 완료된 Project 삭제.
+	2.	Task 관리 API
+	•	POST /api/projects/{project_id}/tasks/{task_id}/start: 특정 Task 시작. 사용자 입력값이 필요한 경우 파라미터로 전달.
+	•	GET /api/projects/{project_id}/tasks: 특정 Project의 Task 리스트 조회.
+	•	PUT /api/projects/{project_id}/tasks/{task_id}: Task 완료 후 상태 업데이트 및 결과 저장.
+	•	GET /api/projects/{project_id}/tasks/{task_id}/result: 특정 Task 결과 조회.
+	3.	데이터 처리 및 결과 다운로드 API
+	•	GET /api/projects/{project_id}/result: Project 완료 시 최종 결과 조회.
+	•	GET /api/projects/{project_id}/export: 최종 결과를 엑셀 파일로 내보내기.
+
+3.2 비즈니스 로직
+
+	•	Project 초기화: Project 생성 시 선택된 Workflow에 따른 고정된 Task List를 설정하여 DB에 저장.
+	•	Task 순차적 실행 관리: 각 Task 완료 후 다음 Task가 자동으로 활성화되도록 상태 관리. Task 완료 상태가 DB에 반영될 때마다 자동으로 다음 Task 시작 가능 여부를 확인.
+	•	Task별 사용자 입력 처리: 특정 Task가 사용자 입력을 필요로 하는 경우 입력값을 API 호출 시 파라미터로 받도록 설정.
+
+4. 데이터베이스 설계
+
+4.1 주요 테이블 구조
+
+	1.	Projects Table
+	•	Columns: project_id (PK), name, created_at, status (대기 중, 진행 중, 완료)
+	•	설명: 각 Project의 기본 정보를 저장하며, 고유한 ID와 상태 값을 가짐.
+	2.	Tasks Table
+	•	Columns: task_id (PK), project_id (FK), name, order, status (대기 중, 진행 중, 완료), result
+	•	설명: 각 Project의 Task 리스트를 저장하며, Task는 고정된 순서(order 필드)에 따라 실행됨.
+	3.	Results Table
+	•	Columns: result_id (PK), project_id (FK), task_id (FK), data
+	•	설명: 각 Task의 결과 데이터를 저장하여 최종 결과 조회 시 활용.
+	4.	User Inputs Table (선택 사항)
+	•	Columns: input_id (PK), project_id (FK), task_id (FK), input_data
+	•	설명: 사용자 입력값을 필요로 하는 Task에서 입력값을 관리하기 위한 테이블.
+
+5. 데이터 처리 및 파일 관리
+
+	•	Pandas를 활용한 데이터 가공: Task 결과 데이터는 Pandas를 통해 테이블 형식으로 가공되며, 최종 결과는 필터링과 검색이 가능하도록 UI에 표시.
+	•	엑셀 파일 내보내기: 특정 Project의 결과 데이터를 엑셀 파일로 변환하여 사용자가 다운로드할 수 있도록 FastAPI에서 Pandas를 활용해 처리.
+
+6. 기타 고려사항
+
+	•	실시간 상태 업데이트: Task 진행 상태는 백엔드에서 실시간으로 업데이트되며, 프론트엔드에서 반영할 수 있도록 WebSocket 혹은 폴링(Polling) 방식 고려.
+	•	에러 처리 및 알림 시스템: Task 진행 중 오류가 발생하면 프론트엔드에 알림을 표시하고, 특정 Task 재시도를 지원.
+	•	로그 및 감사 추적: 각 Task의 진행 이력과 결과는 데이터베이스에 저장되어, 사용자가 각 단계에서 작업이 어떻게 진행되었는지 확인할 수 있음.
