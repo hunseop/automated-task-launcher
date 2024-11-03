@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import TaskCard from "./TaskCard";
+import ProjectResultCard from "./ProjectResultCard";
 
 const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
-    const [isOpen, setIsOpen] = useState(false); // 프로젝트 상세 정보 표시 여부
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // 삭제 확인 모달 표시 여부
-    const [projectStatus, setProjectStatus] = useState(project.status); // 프로젝트 상태
+    const [isOpen, setIsOpen] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [projectStatus, setProjectStatus] = useState(project.status);
+    const [resultData, setResultData] = useState(null);
 
     // 날짜 포맷팅 함수
     const formatDate = (dateString) => {
@@ -50,8 +52,40 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
         setShowDeleteConfirm(false);
     };
 
+    // 결과 데이터 가져오기
+    useEffect(() => {
+        const fetchResultData = async () => {
+            if (!project.id || !isOpen) return;
+            
+            // 프로젝트가 완료 상태인지 확인
+            if (project.status !== 'Completed') {
+                setResultData(null);
+                return;
+            }
+            
+            try {
+                const response = await fetch(
+                    `http://127.0.0.1:8000/project-result/${project.id}`
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log("Fetched result data:", data); // 디버깅용
+                    if (data.result) {
+                        setResultData(data.result);
+                    }
+                } else {
+                    console.error("Failed to fetch result data:", response.statusText);
+                }
+            } catch (error) {
+                console.error("Error fetching result data:", error);
+            }
+        };
+
+        fetchResultData();
+    }, [project.id, project.status, isOpen]);
+
     return (
-        <div className="p-2 border-b hover:bg-gray-100 relative">
+        <div className="p-2 border-b hover:bg-gray-100 relative border border-gray-300">
             <div className="flex justify-between items-center">
                 <div className="flex-grow cursor-pointer" onClick={toggleAccordion}>
                     <h2 className="text-lg font-medium">{project.name}</h2>
@@ -98,9 +132,9 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
             )}
 
             {isOpen && (
-                <div className="mt-2">
-                    {project.tasks && project.tasks.map((task, index) => {
-                        return (
+                <>
+                    <div className="mt-2">
+                        {project.tasks && project.tasks.map((task, index) => (
                             <TaskCard
                                 key={task.id || index}
                                 task={task}
@@ -108,9 +142,19 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                                 previousTask={index > 0 ? project.tasks[index - 1] : null}
                                 onUpdate={updateTaskStatus}
                             />
-                        );
-                    })}
-                </div>
+                        ))}
+                    </div>
+
+                    {/* 프로젝트가 완료 상태이고 결과 데이터가 있을 때만 결과 카드 표시 */}
+                    {project.status === 'Completed' && resultData && (
+                        <div className="mt-4 border-t pt-4">
+                            <ProjectResultCard 
+                                result={resultData}
+                                onDownload={() => {/* 다운로드 핸들러 구현 */}} 
+                            />
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

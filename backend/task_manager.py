@@ -1,7 +1,11 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 import asyncio
 from datetime import datetime
 from enum import Enum
+from utils.firewall_utils import generate_random_policies, MOCK_FIREWALL_TYPES
+import json
+import os
+from pathlib import Path
 
 # 태스크 타입 정의
 class TaskType(str, Enum):
@@ -10,13 +14,11 @@ class TaskType(str, Enum):
     CONFIG_IMPORT = "config_import"
     POLICY_PROCESSING = "policy_processing"
     RULE_DOWNLOAD = "rule_download"
-    POLICY_ANALYSIS = "policy_analysis"
 
 # 입력 포맷 정의
 class InputFormat(str, Enum):
     IP_ID_PW = "IP-ID-PW"
     FIREWALL_TYPE = "FIREWALL_TYPE"
-    POLICY_INPUT = "POLICY_INPUT"
     NONE = "NONE"
 
 # 입력 필드 정의
@@ -40,167 +42,198 @@ INPUT_FORMATS = {
                 ]
             }
         ]
-    },
-    InputFormat.POLICY_INPUT: {
-        "fields": [
-            {"name": "policy_number", "type": "text", "placeholder": "Policy Number"},
-            {"name": "description", "type": "textarea", "placeholder": "Policy Description"}
-        ]
     }
 }
 
 class TaskManager:
     @staticmethod
+    async def handle_firewall_type_selection(params: Dict[str, Any], previous_result: Dict[str, Any] = None) -> Dict[str, Any]:
+        fw_type = params.get('type')
+        if not fw_type or fw_type not in MOCK_FIREWALL_TYPES:
+            raise ValueError("Invalid firewall type selected")
+
+        return {
+            "success": True,
+            "message": f"Selected firewall type: {fw_type}",
+            "data": {
+                "firewall_type": fw_type,
+                "type_info": MOCK_FIREWALL_TYPES[fw_type]
+            }
+        }
+
+    @staticmethod
     async def handle_firewall_connection(params: Dict[str, Any], previous_result: Dict[str, Any] = None) -> Dict[str, Any]:
         ip = params.get('ip')
         id = params.get('id')
         pw = params.get('pw')
-        
+        fw_type = previous_result.get('data', {}).get('firewall_type') if previous_result else None
+
+        if not all([ip, id, pw, fw_type]):
+            print(f"Missing parameters: ip={ip}, id={id}, pw={pw}, fw_type={fw_type}")
+            raise ValueError("Missing required connection parameters")
+
         await asyncio.sleep(1)
-        success = ip == "1.1.1.1" and id == "admin" and pw == "1234"
-        
+        if ip == "1.1.1.1" and id == "admin" and pw == "1234":
+            return {
+                "success": True,
+                "message": "Successfully connected to firewall",
+                "data": {
+                    "connection_info": {
+                        "ip": ip,
+                        "id": id,
+                        "type": fw_type,
+                        "connected_at": datetime.now().isoformat()
+                    }
+                }
+            }
         return {
-            "success": success,
-            "connection_info": {"ip": ip, "id": id} if success else None,
-            "message": "Successfully connected" if success else "Connection failed"
+            "success": False,
+            "message": "Failed to connect to firewall",
+            "data": {}
         }
 
     @staticmethod
-    async def handle_firewall_type_selection(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
-        if not previous_result or not previous_result.get("success"):
-            raise ValueError("유효한 방화벽 연결이 필요합니다")
-        
-        firewall_type = params.get('type')
-        if not firewall_type:
-            raise ValueError("방화벽 타입을 선택해주세요")
+    async def handle_config_import(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        if not previous_result or not previous_result.get('success'):
+            raise ValueError("Valid firewall connection required")
 
+        connection_info = previous_result.get('data', {}).get('connection_info')
+        if not connection_info:
+            raise ValueError("Connection information not found")
+
+        fw_type = connection_info.get('type')
+        policies = generate_random_policies(30000)
+        
         return {
             "success": True,
-            "firewall_type": firewall_type,
-            "connection_info": previous_result["connection_info"],
-            "message": f"Selected firewall type: {firewall_type}"
+            "message": f"Successfully extracted {len(policies)} policies",
+            "data": {
+                "policies": policies,
+                "total_policies": len(policies),
+                "extracted_at": datetime.now().isoformat()
+            }
         }
 
     @staticmethod
-    async def import_configurations(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
-        if not previous_result or not previous_result.get("firewall_type"):
-            raise ValueError("방화벽 타입 선택이 필요합니다")
+    async def handle_policy_processing(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        if not previous_result or not previous_result.get('success'):
+            raise ValueError("Policy data required for processing")
 
-        firewall_type = previous_result["firewall_type"]
-        connection_info = previous_result["connection_info"]
-        
-        # 실제로는 여기서 방화벽 설정을 가져오는 로직 구현
-        await asyncio.sleep(2)  # 설정 가져오기 시뮬레이션
-        
+        policies = previous_result.get('data', {}).get('policies', [])
+        processed_policies = []
+
+        for policy in policies:
+            risk_level = "high" if "any" in (policy["source"] + policy["destination"]) else "low"
+            processed_policies.append({
+                **policy,
+                "risk_level": risk_level,
+                "processed_at": datetime.now().isoformat()
+            })
+
+        high_risk_count = len([p for p in processed_policies if p["risk_level"] == "high"])
+
         return {
             "success": True,
-            "config_data": f"Imported configurations from {connection_info['ip']} ({firewall_type})",
-            "timestamp": datetime.now().isoformat(),
-            "message": "Configuration import completed"
+            "message": f"Processed {len(processed_policies)} policies, found {high_risk_count} high-risk policies",
+            "data": {
+                "policies": processed_policies,
+                "total_policies": len(processed_policies),
+                "high_risk_policies": high_risk_count,
+                "processed": True
+            }
         }
 
     @staticmethod
-    async def process_policies(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
-        if not previous_result or not previous_result.get("config_data"):
-            raise ValueError("방화벽 설정 데이터가 필요합니다")
+    async def handle_rule_download(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        if not previous_result or not previous_result.get('success'):
+            raise ValueError("Processed policy data required for download")
+        
+        if not previous_result.get('data', {}).get('processed'):
+            raise ValueError("Policies must be processed first")
 
-        # 실제로는 여기서 정책 처리 로직 구현
-        await asyncio.sleep(1.5)
+        policies = previous_result.get('data', {}).get('policies', [])
         
         return {
             "success": True,
-            "processed_policies": {
-                "total": 100,
-                "processed": 100,
-                "timestamp": datetime.now().isoformat()
-            },
-            "message": "Policy processing completed"
+            "message": "Rules ready for download",
+            "data": {
+                "policies": policies,
+                "total_policies": len(policies),
+                "download_ready": True
+            }
         }
 
     @staticmethod
-    async def download_rules(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
-        if not previous_result or not previous_result.get("processed_policies"):
-            raise ValueError("처리된 정책 데이터가 필요합니다")
-
-        # 실제로는 여기서 규칙 다운로드 로직 구현
-        await asyncio.sleep(1)
+    async def save_task_result(task_id: str, result_data: dict) -> dict:
+        # 결과 저장 디렉토리 생성
+        task_dir = RESULT_STORAGE_PATH / task_id
+        task_dir.mkdir(parents=True, exist_ok=True)
         
-        return {
-            "success": True,
-            "download_url": "http://example.com/rules.xlsx",
-            "timestamp": datetime.now().isoformat(),
-            "message": "Rules ready for download"
+        # 전체 데이터는 파일로 저장
+        result_file = task_dir / "result.json"
+        with open(result_file, 'w') as f:
+            json.dump(result_data.get("data", []), f)
+        
+        # DB에는 요약 정보만 저장
+        summary = {
+            "success": result_data.get("success", False),
+            "total_count": len(result_data.get("data", [])),
+            "message": result_data.get("message", ""),
+            "result_file": str(result_file)
         }
+        
+        return summary
 
     @staticmethod
-    async def handle_policy_analysis(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
-        if not previous_result or not previous_result.get("firewall_type"):
-            raise ValueError("방화벽 타입 선택이 필요합니다")
-
-        policy_number = params.get('policy_number')
-        description = params.get('description')
-
-        if not policy_number:
-            raise ValueError("정책 번호를 입력해주세요")
-
-        # 실제로는 여기서 정책 분석 로직 구현
-        await asyncio.sleep(2)
-
+    async def get_task_result(task_id: str, load_full_data: bool = False) -> dict:
+        result_file = RESULT_STORAGE_PATH / task_id / "result.json"
+        if not result_file.exists():
+            return None
+            
+        if load_full_data:
+            with open(result_file, 'r') as f:
+                return json.load(f)
+        
+        # 기본적으로는 요약 정보만 반환
         return {
-            "success": True,
-            "analysis_result": {
-                "policy_number": policy_number,
-                "description": description,
-                "analysis_data": "Policy analysis completed",
-                "timestamp": datetime.now().isoformat()
-            },
-            "message": "Policy analysis completed"
+            "result_file": str(result_file)
         }
 
 # 태스크 타입과 핸들러 매핑
 TASK_TYPE_HANDLERS = {
-    TaskType.FIREWALL_CONNECTION: {
-        "handler": TaskManager.handle_firewall_connection,
-        "input_format": InputFormat.IP_ID_PW,
-        "requires_previous": False
-    },
     TaskType.FIREWALL_TYPE_SELECTION: {
         "handler": TaskManager.handle_firewall_type_selection,
         "input_format": InputFormat.FIREWALL_TYPE,
+        "requires_previous": False
+    },
+    TaskType.FIREWALL_CONNECTION: {
+        "handler": TaskManager.handle_firewall_connection,
+        "input_format": InputFormat.IP_ID_PW,
         "requires_previous": True
     },
     TaskType.CONFIG_IMPORT: {
-        "handler": TaskManager.import_configurations,
+        "handler": TaskManager.handle_config_import,
         "input_format": InputFormat.NONE,
         "requires_previous": True
     },
     TaskType.POLICY_PROCESSING: {
-        "handler": TaskManager.process_policies,
+        "handler": TaskManager.handle_policy_processing,
         "input_format": InputFormat.NONE,
         "requires_previous": True
     },
     TaskType.RULE_DOWNLOAD: {
-        "handler": TaskManager.download_rules,
+        "handler": TaskManager.handle_rule_download,
         "input_format": InputFormat.NONE,
-        "requires_previous": True
-    },
-    TaskType.POLICY_ANALYSIS: {
-        "handler": TaskManager.handle_policy_analysis,
-        "input_format": InputFormat.POLICY_INPUT,
         "requires_previous": True
     }
 }
 
-# 태스크 타입 정보 조회 함수
 def get_task_type_info(task_type: TaskType) -> Dict:
     task_config = TASK_TYPE_HANDLERS.get(task_type)
     if not task_config:
         return None
     
-    input_format = task_config["input_format"]
-    format_data = INPUT_FORMATS.get(input_format)
-    
     return {
-        "input_format": format_data,
+        "input_format": INPUT_FORMATS.get(task_config["input_format"]),
         "requires_previous": task_config["requires_previous"]
     }

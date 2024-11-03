@@ -9,7 +9,17 @@ from datetime import datetime
 import asyncio
 from uuid import uuid4
 from projects import project_templates
-from task_manager import TASK_TYPE_HANDLERS, get_task_type_info, TaskType
+from task_manager import TASK_TYPE_HANDLERS, get_task_type_info, TaskType, TaskManager
+import json
+from fastapi.responses import JSONResponse
+import os
+from pathlib import Path
+import traceback
+
+# 결과 저장 디렉토리 설정
+RESULT_STORAGE_PATH = Path("../storage/results")
+if not RESULT_STORAGE_PATH.exists():
+    RESULT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
 # 데이터베이스 세션 생성
 def get_db():
@@ -27,13 +37,15 @@ Base = declarative_base()
 
 app = FastAPI()
 
-# CORS 설정 추가
+# CORS 설정 수정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React 앱의 도메인 허용
+    allow_origins=["http://localhost:3000"],  # React 앱의 도메인
     allow_credentials=True,
     allow_methods=["*"],  # 모든 HTTP 메서드 허용
     allow_headers=["*"],  # 모든 HTTP 헤더 허용
+    expose_headers=["*"],  # 모든 헤더 노출 허용
+    max_age=3600,  # preflight 요청 캐시 시간 (1시간)
 )
 
 # Pydantic 모델 정의
@@ -80,7 +92,8 @@ class Task(Base):
     type = Column(String)
     project_id = Column(String, ForeignKey("projects.id"))
     created_at = Column(DateTime, default=datetime.now)
-    result = Column(JSON, nullable=True)  # 태스크 결과 저장을 위한 JSON 필드
+    result_path = Column(String, nullable=True)  # 파일 경로 저장
+    result_summary = Column(JSON, nullable=True)  # 간단한 요약 정보만 저장
     project = relationship("Project", back_populates="tasks")
 
 # 데이터베이스 테이블 생성
@@ -163,74 +176,71 @@ async def get_project_types():
 # 태스크 업데이트 API
 @app.post("/update-task")
 async def update_task(request: UpdateTaskRequest, db: Session = Depends(get_db)):
-    project = db.query(Project).filter(Project.id == request.project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    current_task = db.query(Task).filter(
-        Task.project_id == project.id,
-        Task.name == request.task_name
-    ).first()
-    if not current_task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    all_tasks = db.query(Task).filter(
-        Task.project_id == project.id
-    ).order_by(Task.created_at).all()
-
-    current_task_index = next(
-        (i for i, task in enumerate(all_tasks) if task.id == current_task.id), 
-        -1
-    )
-
-    if current_task_index > 0:
-        previous_task = all_tasks[current_task_index - 1]
-        if previous_task.status != "Completed":
-            raise HTTPException(
-                status_code=400, 
-                detail="Previous task must be completed first"
-            )
-
     try:
-        # 이전 태스크의 결과 가져오기
-        previous_task = None
-        if current_task_index > 0:
-            previous_task = all_tasks[current_task_index - 1]
-            if previous_task.status != "Completed":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Previous task must be completed first"
-                )
+        # print("Request data:", request.dict())  # 요청 데이터 출력
+        
+        project = db.query(Project).filter(Project.id == request.project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
 
+        current_task = db.query(Task).filter(
+            Task.project_id == project.id,
+            Task.name == request.task_name
+        ).first()
+        if not current_task:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        print("Current task:", current_task.name, current_task.type)  # 현재 태스크 정보 출력
+        
         # 태스크 처리
         task_config = TASK_TYPE_HANDLERS.get(current_task.type)
+        print("Task config:", task_config)  # 태스크 설정 정보 출력
+        
         if task_config:
             try:
                 params = request.dict(exclude_unset=True)
+                # print("Previous result:", request.previous_result)  # 이전 결과 출력
+                
                 result = await task_config["handler"](
                     params,
-                    previous_task.result if previous_task else None
+                    request.previous_result
                 )
-                current_task.result = result
+                print("Handler result:", result)  # 핸들러 결과 출력
                 
-                # 태스크 결과에 따라 상태 설정
+                # 결과 저장
+                if result.get("data"):
+                    # 결과 파일 저장
+                    task_dir = RESULT_STORAGE_PATH / current_task.id
+                    task_dir.mkdir(parents=True, exist_ok=True)
+                    result_file = task_dir / "result.json"
+                    
+                    with open(result_file, 'w') as f:
+                        json.dump(result.get("data", []), f)
+                    
+                    # 요약 정보 저장
+                    current_task.result_summary = {
+                        "success": result.get("success", False),
+                        "total_count": len(result.get("data", [])),
+                        "message": result.get("message", ""),
+                        "result_file": str(result_file)
+                    }
+                    current_task.result_path = str(result_file)
+                else:
+                    current_task.result_summary = result
+                
+                # 태스크 상태 업데이트
                 if result.get("success", False):
                     current_task.status = "Completed"
                 else:
                     current_task.status = "Error"
                     
-            except ValueError as e:
-                current_task.status = "Error"
-                raise HTTPException(status_code=400, detail=str(e))
-        else:
-            current_task.status = "Completed"
-
-        db.commit()
-
-        # 프로젝트 상태 업데이트를 위해 최신 태스크 상태 조회
-        updated_tasks = db.query(Task).filter(Task.project_id == project.id).all()
-        
+            except Exception as e:
+                print(f"Error in task handler: {str(e)}")
+                print(f"Error traceback: {traceback.format_exc()}")
+                raise HTTPException(status_code=500, detail=f"Task handler error: {str(e)}")
+                
         # 프로젝트 상태 업데이트
+        updated_tasks = db.query(Task).filter(Task.project_id == project.id).all()
         if all(task.status == "Completed" for task in updated_tasks):
             project.status = "Completed"
         elif any(task.status == "Error" for task in updated_tasks):
@@ -245,7 +255,7 @@ async def update_task(request: UpdateTaskRequest, db: Session = Depends(get_db))
             "task": {
                 "name": current_task.name,
                 "status": current_task.status,
-                "result": current_task.result
+                "result": current_task.result_summary
             },
             "project": {
                 "id": project.id,
@@ -255,9 +265,9 @@ async def update_task(request: UpdateTaskRequest, db: Session = Depends(get_db))
 
     except Exception as e:
         db.rollback()
-        current_task.status = "Error"
-        project.status = "Error"
-        db.commit()
+        print(f"Error in update_task: {str(e)}")
+        print(f"Error type: {type(e)}")
+        print(f"Error traceback: {traceback.format_exc()}")  # 전체 에러 트레이스백 출력
         raise HTTPException(status_code=500, detail=str(e))
 
 # 프로젝트 삭제 API
@@ -283,11 +293,32 @@ async def get_task_result(project_id: str, task_name: str, db: Session = Depends
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    return {
+    result = None
+    if task.result_path:
+        try:
+            with open(task.result_path, 'r') as f:
+                data = json.load(f)
+                result = {
+                    "success": task.result_summary.get("success", False),
+                    "message": task.result_summary.get("message", ""),
+                    "data": data
+                }
+        except Exception as e:
+            print(f"Error loading result file: {str(e)}")
+            result = task.result_summary
+    else:
+        result = task.result_summary
+    
+    response = JSONResponse({
         "task_name": task.name,
         "status": task.status,
-        "result": task.result
-    }
+        "result": result
+    })
+    
+    response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    
+    return response
 
 # 태스크 타입 정보 조회 API
 @app.get("/task-type-info/{task_type}")
@@ -302,3 +333,48 @@ async def get_task_type_information(task_type: str):
         return info
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid task type: {task_type}")
+
+@app.get("/project-result/{project_id}")
+async def get_project_result(project_id: str, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # 프로젝트의 모든 태스크가 완료되었는지 확인
+    if project.status != "Completed":
+        return {"result": None}
+
+    download_task = db.query(Task).filter(
+        Task.project_id == project_id,
+        Task.name == "Download Rules",
+        Task.status == "Completed"
+    ).first()
+    
+    if not download_task:
+        return {"result": None}
+
+    try:
+        if download_task.result_path and os.path.exists(download_task.result_path):
+            with open(download_task.result_path, 'r') as f:
+                result_data = json.load(f)
+                print("Loaded result data:", result_data)  # 디버깅용
+                
+            return {
+                "result": {
+                    "type": "policy",
+                    "data": result_data,  # 이 부분이 배열인지 확인
+                    "summary": download_task.result_summary
+                }
+            }
+        else:
+            # 파일이 없는 경우 요약 정보만 반환
+            return {
+                "result": {
+                    "type": "policy",
+                    "data": [],
+                    "summary": download_task.result_summary
+                }
+            }
+    except Exception as e:
+        print(f"Error loading result data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load result data: {str(e)}")

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uuid
 from datetime import datetime
-from task_manager import TaskType, InputFormat
+from task_manager import TaskType
 
 # Task 클래스 정의
 class Task(BaseModel):
@@ -35,21 +35,11 @@ project_templates = [
     {
         "name": "Export Security Rules",
         "tasks": [
-            {"name": "Connect to Firewall", "type": TaskType.FIREWALL_CONNECTION},
             {"name": "Select a Firewall Type", "type": TaskType.FIREWALL_TYPE_SELECTION},
-            {"name": "Importing configurations", "type": TaskType.CONFIG_IMPORT},
-            {"name": "Processing policies", "type": TaskType.POLICY_PROCESSING},
-            {"name": "Download Security Rules", "type": TaskType.RULE_DOWNLOAD}
-        ]
-    },
-    {
-        "name": "Analyze Shadow Rules",
-        "tasks": [
             {"name": "Connect to Firewall", "type": TaskType.FIREWALL_CONNECTION},
-            {"name": "Select a Firewall Type", "type": TaskType.FIREWALL_TYPE_SELECTION},
-            {"name": "Enter Policy for Analysis", "type": TaskType.POLICY_ANALYSIS},
-            {"name": "Processing Analysis", "type": TaskType.POLICY_PROCESSING},
-            {"name": "Download Analysis Result", "type": TaskType.RULE_DOWNLOAD}
+            {"name": "Import Configuration", "type": TaskType.CONFIG_IMPORT},
+            {"name": "Process Policies", "type": TaskType.POLICY_PROCESSING},
+            {"name": "Download Rules", "type": TaskType.RULE_DOWNLOAD}
         ]
     }
 ]

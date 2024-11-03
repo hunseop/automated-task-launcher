@@ -1,5 +1,7 @@
 // frontend/src/components/TaskCard.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import PolicyTable from "./PolicyTable";
+import ProjectResultCard from "./ProjectResultCard";
 
 const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -10,36 +12,16 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
     const [inputFormat, setInputFormat] = useState(null);
 
     useEffect(() => {
-        const fetchTaskTypeInfo = async () => {
-            if (!task.type) {
-                console.error("No task type provided for task:", task);
-                return;
+        if (previousTask) {
+            if (previousTask.status === 'Completed') {
+                setIsOpen(true);
             }
-
-            try {
-                const response = await fetch(`http://127.0.0.1:8000/task-type-info/${encodeURIComponent(task.type)}`);
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch task type info: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                if (data.input_format) {
-                    setInputFormat(data.input_format);
-                    const initialFormData = {};
-                    data.input_format.fields.forEach(field => {
-                        initialFormData[field.name] = "";
-                    });
-                    setFormData(initialFormData);
-                }
-            } catch (error) {
-                console.error("Error fetching task type info:", error);
+        } else {
+            if (task.name === "Select a Firewall Type") {
+                setIsOpen(true);
             }
-        };
-
-        fetchTaskTypeInfo();
-    }, [task]);
+        }
+    }, [previousTask, task.name, previousTask?.status]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -105,7 +87,7 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
         }
     };
 
-    const handleContinue = async () => {
+    const handleContinue = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -117,6 +99,7 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                 if (resultResponse.ok) {
                     const resultData = await resultResponse.json();
                     previousResult = resultData.result;
+                    console.log("Previous task result:", previousResult);
                 }
             }
 
@@ -126,6 +109,8 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                 previous_result: previousResult,
                 ...formData
             };
+
+            console.log("Sending request body:", body);
 
             const response = await fetch("http://127.0.0.1:8000/update-task", {
                 method: "POST",
@@ -139,12 +124,24 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
             }
 
             const data = await response.json();
-            if (data.task && data.project) {
+            if (data.task) {
                 await onUpdate(
                     task.name, 
                     data.task.status, 
-                    data.project.status
+                    data.project?.status
                 );
+
+                if (data.task.status === 'Completed') {
+                    const nextTaskName = getNextTaskName(task.name);
+                    if (nextTaskName) {
+                        const nextTask = document.querySelector(`[data-task-name="${nextTaskName}"]`);
+                        if (nextTask) {
+                            setTimeout(() => {
+                                nextTask.click();
+                            }, 1000);
+                        }
+                    }
+                }
             }
         } catch (error) {
             setError(error.message);
@@ -152,10 +149,72 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
         } finally {
             setLoading(false);
         }
+    }, [projectId, task.name, formData, onUpdate, previousTask]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchTaskTypeInfo = async () => {
+            if (task.status === 'Completed') {
+                return;
+            }
+
+            if (!task.type || !isOpen) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/task-type-info/${task.type}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch task type info: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (!isMounted) return;
+
+                if (data.input_format) {
+                    setInputFormat(data.input_format);
+                    const initialFormData = {};
+                    data.input_format.fields.forEach(field => {
+                        initialFormData[field.name] = "";
+                    });
+                    setFormData(initialFormData);
+                }
+
+                const shouldAutoExecute = 
+                    task.status === 'Waiting' &&
+                    (!data.input_format || !data.input_format.fields || data.input_format.fields.length === 0) &&
+                    (!data.requires_previous || (previousTask && previousTask.status === 'Completed'));
+
+                if (shouldAutoExecute) {
+                    handleContinue();
+                }
+            } catch (error) {
+                console.error("Error fetching task type info:", error);
+            }
+        };
+
+        fetchTaskTypeInfo();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [isOpen, task.type, task.status, previousTask?.status]);
+
+    const getNextTaskName = (currentTaskName) => {
+        const taskSequence = [
+            "Select a Firewall Type",
+            "Connect to Firewall",
+            "Import Configuration",
+            "Process Policies",
+            "Download Rules"
+        ];
+        const currentIndex = taskSequence.indexOf(currentTaskName);
+        return taskSequence[currentIndex + 1];
     };
 
     return (
-        <div className="border-b p-2">
+        <div className="border rounded p-4 mb-2" data-task-name={task.name}>
             <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
                 <h3 className="font-medium">{task.name}</h3>
                 <span className={`${
@@ -169,42 +228,44 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
 
             {isOpen && (
                 <div className="mt-2 space-y-2">
-                    {inputFormat?.fields ? (
-                        inputFormat.fields.map(field => renderInputField(field))
-                    ) : (
-                        <p className="text-gray-500">No input fields required</p>
+                    {inputFormat?.fields && (
+                        <>
+                            {inputFormat.fields.map(field => renderInputField(field))}
+                            {loading ? (
+                                <span className="text-gray-500">Updating...</span>
+                            ) : (
+                                <button 
+                                    className={`btn-primary ${task.status === 'Error' ? 'bg-red-500' : ''}`}
+                                    onClick={handleContinue}
+                                    disabled={loading}
+                                >
+                                    Continue
+                                </button>
+                            )}
+                        </>
                     )}
-                    {loading ? (
-                        <span className="text-gray-500">Updating...</span>
-                    ) : (
-                        <button 
-                            className={`btn-primary ${task.status === 'Error' ? 'bg-red-500' : ''}`}
-                            onClick={handleContinue}
-                            disabled={loading}
-                        >
-                            Continue
-                        </button>
+                    
+                    {task.name !== "Download Rules" && task.result && (
+                        <div className="mt-2">
+                            <p className="text-sm text-gray-600">
+                                {task.result.message || JSON.stringify(task.result)}
+                            </p>
+                        </div>
                     )}
                 </div>
             )}
 
-            {showErrorModal && (
+            {showErrorModal && error && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md">
-                        <h3 className="text-lg font-medium mb-4">작업 순서 알림</h3>
-                        <p className="mb-4 text-gray-600">
-                            {error === "Previous task must be completed first" 
-                                ? "이전 작업을 먼저 완료해주세요."
-                                : error}
-                        </p>
-                        <div className="flex justify-end">
-                            <button
-                                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                                onClick={() => setShowErrorModal(false)}
-                            >
-                                확인
-                            </button>
-                        </div>
+                    <div className="bg-white p-6 rounded-lg shadow-lg">
+                        <h3 className="text-lg font-medium mb-4">Error</h3>
+                        <p className="mb-4 text-red-500">{error}</p>
+                        <button
+                            className="px-4 py-2 bg-blue-500 text-white rounded"
+                            onClick={() => setShowErrorModal(false)}
+                        >
+                            Close
+                        </button>
                     </div>
                 </div>
             )}
