@@ -1,80 +1,187 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import {
+    useReactTable,
+    getCoreRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    flexRender,
+    createColumnHelper
+} from '@tanstack/react-table';
 import * as XLSX from 'xlsx';
 
 const PolicyTable = ({ policies }) => {
+    const [globalFilter, setGlobalFilter] = useState('');
     const [isExpanded, setIsExpanded] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [filteredPolicies, setFilteredPolicies] = useState([]);
-    const [filters, setFilters] = useState({
-        vsys: '',
-        action: '',
-        riskLevel: ''
-    });
-    const policiesPerPage = 10;
-
-    useEffect(() => {
-        console.log("PolicyTable received policies:", policies); // 상세 로깅
-        console.log("Type of policies:", typeof policies);
-        console.log("Is Array?", Array.isArray(policies));
-        
-        if (policies) {
-            if (Array.isArray(policies)) {
-                setFilteredPolicies(policies);
-            } else if (typeof policies === 'object') {
-                // policies가 객체인 경우 처리
-                const policiesArray = policies.policies || [];
-                console.log("Converted policies array:", policiesArray);
-                setFilteredPolicies(policiesArray);
-            } else {
-                console.error("Unexpected policies format:", policies);
-                setFilteredPolicies([]);
-            }
-        } else {
-            setFilteredPolicies([]);
+    
+    const columnHelper = createColumnHelper();
+    
+    const data = useMemo(() => {
+        if (!policies) return [];
+        if (Array.isArray(policies)) return policies;
+        if (typeof policies === 'object' && Array.isArray(policies.policies)) {
+            return policies.policies;
         }
+        return [];
     }, [policies]);
+    
+    const columns = useMemo(
+        () => {
+            const baseColumns = [
+                columnHelper.accessor('vsys', {
+                    header: 'VSYS',
+                    cell: info => info.getValue(),
+                }),
+                columnHelper.accessor('seq', {
+                    header: 'Sequence',
+                    cell: info => info.getValue(),
+                }),
+                columnHelper.accessor('rulename', {
+                    header: 'Rule Name',
+                    cell: info => info.getValue(),
+                }),
+                columnHelper.accessor('action', {
+                    header: 'Action',
+                    cell: info => info.getValue(),
+                }),
+                columnHelper.accessor('source', {
+                    header: 'Source',
+                    cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
+                }),
+                columnHelper.accessor('destination', {
+                    header: 'Destination',
+                    cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
+                }),
+                columnHelper.accessor('service', {
+                    header: 'Service',
+                    cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
+                })
+            ];
 
-    // 페이지네이션 처리
-    const indexOfLastPolicy = currentPage * policiesPerPage;
-    const indexOfFirstPolicy = indexOfLastPolicy - policiesPerPage;
-    const currentPolicies = Array.isArray(filteredPolicies) 
-        ? filteredPolicies.slice(indexOfFirstPolicy, indexOfLastPolicy)
-        : [];
-    const totalPages = Math.ceil((filteredPolicies?.length || 0) / policiesPerPage);
+            // 첫 번째 정책에 shadow_type이 있으면 Shadow Policy Analysis 결과로 판단
+            if (data[0]?.shadow_type) {
+                baseColumns.push(
+                    columnHelper.accessor('shadow_type', {
+                        header: 'Shadow Type',
+                        cell: info => (
+                            <span className={info.getValue() === 'Redundant' ? 'text-yellow-500' : 'text-red-500'}>
+                                {info.getValue()}
+                            </span>
+                        ),
+                    }),
+                    columnHelper.accessor('shadowed_by', {
+                        header: 'Shadowed By',
+                        cell: info => info.getValue(),
+                    })
+                );
+            }
+            // 첫 번째 정책에 impact_details가 있으면 Block Impact Analysis 결과로 판단
+            else if (data[0]?.impact_details) {
+                baseColumns.push(
+                    columnHelper.accessor('impact_details', {
+                        header: 'Impact Details',
+                        cell: info => {
+                            const details = info.getValue();
+                            return (
+                                <div className="text-sm">
+                                    <div>Overlapping Sources: {details.overlapping_sources.join(', ')}</div>
+                                    <div>Overlapping Destinations: {details.overlapping_destinations.join(', ')}</div>
+                                    <div>Overlapping Services: {details.overlapping_services.join(', ')}</div>
+                                </div>
+                            );
+                        },
+                    })
+                );
+            }
+            // Block Impact Analysis 결과 처리
+            else if (data[0]?.analysis_type === "Target Rule") {
+                baseColumns.push(
+                    columnHelper.accessor('analysis_type', {
+                        header: 'Analysis Type',
+                        cell: info => (
+                            <span className="text-blue-500 font-medium">
+                                {info.getValue()}
+                            </span>
+                        ),
+                    }),
+                    columnHelper.accessor('impact_summary', {
+                        header: 'Impact Summary',
+                        cell: info => info.getValue(),
+                    })
+                );
+            }
+            // 기본 정책 목록인 경우
+            else {
+                baseColumns.push(
+                    columnHelper.accessor('risk_level', {
+                        header: 'Risk Level',
+                        cell: info => (
+                            <span className={info.getValue() === 'high' ? 'text-red-500' : 'text-green-500'}>
+                                {info.getValue()}
+                            </span>
+                        ),
+                    })
+                );
+            }
 
-    // 통계 정보 계산
-    const stats = {
-        total: filteredPolicies?.length || 0,
-        highRisk: Array.isArray(filteredPolicies) 
-            ? filteredPolicies.filter(p => p.risk_level === 'high').length 
-            : 0,
-        allowRules: Array.isArray(filteredPolicies) 
-            ? filteredPolicies.filter(p => p.action === 'allow').length 
-            : 0,
-        denyRules: Array.isArray(filteredPolicies) 
-            ? filteredPolicies.filter(p => p.action === 'deny').length 
-            : 0
-    };
+            return baseColumns;
+        },
+        [data]
+    );
 
-    // 안전한 join 함수 추가
-    const safeJoin = (arr) => {
-        return Array.isArray(arr) ? arr.join(', ') : '';
-    };
+    const table = useReactTable({
+        data,
+        columns,
+        state: {
+            globalFilter,
+        },
+        onGlobalFilterChange: setGlobalFilter,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+    });
 
-    // 엑셀 다운로드 핸들러 수정
+    // 통계 정보 계산 수정
+    const stats = useMemo(() => {
+        const safeData = Array.isArray(data) ? data : [];
+        
+        // Block Impact Analysis 결과인 경우
+        if (safeData[0]?.impact_details) {
+            return {
+                total: safeData.length,
+                impactedRules: safeData.reduce((acc, curr) => acc + (curr.impacted_rules?.length || 0), 0),
+                targetRules: safeData.length,
+                averageImpact: Math.round(safeData.reduce((acc, curr) => acc + (curr.impacted_rules?.length || 0), 0) / safeData.length)
+            };
+        }
+        // Shadow Policy Analysis 결과인 경우
+        else if (safeData[0]?.shadow_type) {
+            return {
+                total: safeData.length,
+                redundantRules: safeData.filter(p => p.shadow_type === 'Redundant').length,
+                conflictingRules: safeData.filter(p => p.shadow_type === 'Conflicting').length,
+                shadowedRules: safeData.length
+            };
+        }
+        // 기본 정책 목록인 경우
+        else {
+            return {
+                total: safeData.length,
+                highRisk: safeData.filter(p => p?.risk_level === 'high').length,
+                allowRules: safeData.filter(p => p?.action === 'allow').length,
+                denyRules: safeData.filter(p => p?.action === 'deny').length
+            };
+        }
+    }, [data]);
+
     const handleDownload = () => {
-        const exportData = filteredPolicies.map(policy => ({
+        const exportData = data.map(policy => ({
             'VSYS': policy.vsys || '',
             'Sequence': policy.seq || '',
             'Rule Name': policy.rulename || '',
-            'Enabled': policy.enable === true ? 'Yes' : 'No',
             'Action': policy.action || '',
             'Source': Array.isArray(policy.source) ? policy.source.join(', ') : '',
-            'User': Array.isArray(policy.user) ? policy.user.join(', ') : '',
             'Destination': Array.isArray(policy.destination) ? policy.destination.join(', ') : '',
             'Service': Array.isArray(policy.service) ? policy.service.join(', ') : '',
-            'Application': Array.isArray(policy.application) ? policy.application.join(', ') : '',
-            'Description': policy.description || '',
             'Risk Level': policy.risk_level || ''
         }));
 
@@ -122,70 +229,46 @@ const PolicyTable = ({ policies }) => {
             </div>
 
             {isExpanded && (
-                <>
-                    {/* 필터 */}
-                    <div className="flex gap-4 mb-4">
-                        <select
-                            className="border p-2 rounded"
-                            value={filters.vsys}
-                            onChange={e => setFilters({...filters, vsys: e.target.value})}
-                        >
-                            <option value="">All VSYS</option>
-                            <option value="vsys1">VSYS1</option>
-                            <option value="vsys2">VSYS2</option>
-                            <option value="vsys3">VSYS3</option>
-                        </select>
-                        <select
-                            className="border p-2 rounded"
-                            value={filters.action}
-                            onChange={e => setFilters({...filters, action: e.target.value})}
-                        >
-                            <option value="">All Actions</option>
-                            <option value="allow">Allow</option>
-                            <option value="deny">Deny</option>
-                            <option value="drop">Drop</option>
-                        </select>
-                        <select
-                            className="border p-2 rounded"
-                            value={filters.riskLevel}
-                            onChange={e => setFilters({...filters, riskLevel: e.target.value})}
-                        >
-                            <option value="">All Risk Levels</option>
-                            <option value="high">High</option>
-                            <option value="low">Low</option>
-                        </select>
+                <div className="space-y-4">
+                    {/* 검색 필드 */}
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            value={globalFilter ?? ''}
+                            onChange={e => setGlobalFilter(e.target.value)}
+                            placeholder="Search all columns..."
+                            className="px-4 py-2 border rounded w-full"
+                        />
                     </div>
 
                     {/* 테이블 */}
                     <div className="overflow-x-auto">
                         <table className="min-w-full bg-white">
                             <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="px-4 py-2">VSYS</th>
-                                    <th className="px-4 py-2">Seq</th>
-                                    <th className="px-4 py-2">Rule Name</th>
-                                    <th className="px-4 py-2">Action</th>
-                                    <th className="px-4 py-2">Source</th>
-                                    <th className="px-4 py-2">Destination</th>
-                                    <th className="px-4 py-2">Service</th>
-                                    <th className="px-4 py-2">Risk Level</th>
-                                </tr>
+                                {table.getHeaderGroups().map(headerGroup => (
+                                    <tr key={headerGroup.id}>
+                                        {headerGroup.headers.map(header => (
+                                            <th key={header.id} className="px-4 py-2">
+                                                {flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
+                                                )}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                ))}
                             </thead>
                             <tbody>
-                                {currentPolicies.map((policy) => (
-                                    <tr key={`${policy.vsys}-${policy.seq}`} className="border-b hover:bg-gray-50">
-                                        <td className="px-4 py-2">{policy.vsys || ''}</td>
-                                        <td className="px-4 py-2">{policy.seq || ''}</td>
-                                        <td className="px-4 py-2">{policy.rulename || ''}</td>
-                                        <td className="px-4 py-2">{policy.action || ''}</td>
-                                        <td className="px-4 py-2">{safeJoin(policy.source)}</td>
-                                        <td className="px-4 py-2">{safeJoin(policy.destination)}</td>
-                                        <td className="px-4 py-2">{safeJoin(policy.service)}</td>
-                                        <td className={`px-4 py-2 ${
-                                            policy.risk_level === 'high' ? 'text-red-500' : 'text-green-500'
-                                        }`}>
-                                            {policy.risk_level || ''}
-                                        </td>
+                                {table.getRowModel().rows.map(row => (
+                                    <tr key={row.id} className="border-b hover:bg-gray-50">
+                                        {row.getVisibleCells().map(cell => (
+                                            <td key={cell.id} className="px-4 py-2">
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </td>
+                                        ))}
                                     </tr>
                                 ))}
                             </tbody>
@@ -193,26 +276,27 @@ const PolicyTable = ({ policies }) => {
                     </div>
 
                     {/* 페이지네이션 */}
-                    <div className="flex justify-center mt-4">
+                    <div className="flex justify-center gap-2">
                         <button
-                            className="px-3 py-1 bg-gray-200 rounded mr-2"
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
+                            onClick={() => table.previousPage()}
+                            disabled={!table.getCanPreviousPage()}
+                            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
                         >
                             Previous
                         </button>
                         <span className="px-3 py-1">
-                            Page {currentPage} of {totalPages}
+                            Page {table.getState().pagination.pageIndex + 1} of{' '}
+                            {table.getPageCount()}
                         </span>
                         <button
-                            className="px-3 py-1 bg-gray-200 rounded ml-2"
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
+                            onClick={() => table.nextPage()}
+                            disabled={!table.getCanNextPage()}
+                            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
                         >
                             Next
                         </button>
                     </div>
-                </>
+                </div>
             )}
         </div>
     );

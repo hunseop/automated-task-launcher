@@ -41,6 +41,27 @@ project_templates = [
             {"name": "Process Policies", "type": TaskType.POLICY_PROCESSING},
             {"name": "Download Rules", "type": TaskType.RULE_DOWNLOAD}
         ]
+    },
+    {
+        "name": "Shadow Policy Analysis",
+        "tasks": [
+            {"name": "Select a Firewall Type", "type": TaskType.FIREWALL_TYPE_SELECTION},
+            {"name": "Connect to Firewall", "type": TaskType.FIREWALL_CONNECTION},
+            {"name": "Import Configuration", "type": TaskType.CONFIG_IMPORT},
+            {"name": "Process Shadow Policies", "type": TaskType.SHADOW_POLICY_PROCESSING},
+            {"name": "Download Rules", "type": TaskType.RULE_DOWNLOAD}
+        ]
+    },
+    {
+        "name": "Block Impact Analysis",
+        "tasks": [
+            {"name": "Select a Firewall Type", "type": TaskType.FIREWALL_TYPE_SELECTION},
+            {"name": "Connect to Firewall", "type": TaskType.FIREWALL_CONNECTION},
+            {"name": "Import Configuration", "type": TaskType.CONFIG_IMPORT},
+            {"name": "Input Target Rules", "type": TaskType.INPUT_TARGET_RULES},
+            {"name": "Process Impact Analysis", "type": TaskType.IMPACT_ANALYSIS},
+            {"name": "Download Rules", "type": TaskType.RULE_DOWNLOAD}
+        ]
     }
 ]
 

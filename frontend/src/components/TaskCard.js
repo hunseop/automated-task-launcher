@@ -202,13 +202,26 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
     }, [isOpen, task.type, task.status, previousTask?.status]);
 
     const getNextTaskName = (currentTaskName) => {
-        const taskSequence = [
+        const exportSecurityTasks = [
             "Select a Firewall Type",
             "Connect to Firewall",
             "Import Configuration",
             "Process Policies",
             "Download Rules"
         ];
+
+        const shadowPolicyTasks = [
+            "Select a Firewall Type",
+            "Connect to Firewall",
+            "Import Configuration",
+            "Process Shadow Policies",
+            "Download Rules"
+        ];
+
+        // 현재 태스크가 어느 시퀀스에 속하는지 확인
+        const isExportSequence = exportSecurityTasks.includes(currentTaskName);
+        const taskSequence = isExportSequence ? exportSecurityTasks : shadowPolicyTasks;
+        
         const currentIndex = taskSequence.indexOf(currentTaskName);
         return taskSequence[currentIndex + 1];
     };

@@ -1,18 +1,12 @@
 import React from 'react';
 import PolicyTable from './PolicyTable';
 
-const ProjectResultCard = ({ result, onDownload }) => {
-    // 결과 타입에 따른 렌더링 함수
+const ProjectResultCard = ({ result }) => {
     const renderResult = () => {
         if (!result) return null;
 
-        console.log("Result data in ProjectResultCard:", result); // 디버깅용
-
-        // 결과 타입에 따라 다른 컴포넌트를 렌더링
         switch (result.type) {
             case 'policy':
-                // result.data가 배열인지 확인하고 로그 출력
-                console.log("Policies being passed to PolicyTable:", result.data);
                 return <PolicyTable policies={result.data} />;
             case 'text':
                 return <pre className="whitespace-pre-wrap">{result.data}</pre>;
@@ -33,14 +27,6 @@ const ProjectResultCard = ({ result, onDownload }) => {
             <div className="result-content">
                 {renderResult()}
             </div>
-            {onDownload && (
-                <button
-                    className="bg-green-500 text-white px-4 py-2 rounded mt-2"
-                    onClick={onDownload}
-                >
-                    Download Results
-                </button>
-            )}
         </div>
     );
 };

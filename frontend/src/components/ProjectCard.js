@@ -69,7 +69,6 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                 );
                 if (response.ok) {
                     const data = await response.json();
-                    console.log("Fetched result data:", data); // 디버깅용
                     if (data.result) {
                         setResultData(data.result);
                     }
@@ -148,10 +147,7 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                     {/* 프로젝트가 완료 상태이고 결과 데이터가 있을 때만 결과 카드 표시 */}
                     {project.status === 'Completed' && resultData && (
                         <div className="mt-4 border-t pt-4">
-                            <ProjectResultCard 
-                                result={resultData}
-                                onDownload={() => {/* 다운로드 핸들러 구현 */}} 
-                            />
+                            <ProjectResultCard result={resultData} />
                         </div>
                     )}
                 </>
