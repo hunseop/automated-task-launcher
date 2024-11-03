@@ -98,8 +98,13 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                 );
                 if (resultResponse.ok) {
                     const resultData = await resultResponse.json();
-                    previousResult = resultData.result;
-                    console.log("Previous task result:", previousResult);
+                    previousResult = resultData.result?.data 
+                        ? { 
+                            success: resultData.result.success,
+                            data: resultData.result.data,
+                            message: resultData.result.message
+                        } 
+                        : resultData.result;
                 }
             }
 
@@ -218,25 +223,77 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
             "Download Rules"
         ];
 
+        const blockImpactTasks = [
+            "Select a Firewall Type",
+            "Connect to Firewall",
+            "Import Configuration",
+            "Input Target Rules",
+            "Process Impact Analysis",
+            "Download Rules"
+        ];
+
         // 현재 태스크가 어느 시퀀스에 속하는지 확인
-        const isExportSequence = exportSecurityTasks.includes(currentTaskName);
-        const taskSequence = isExportSequence ? exportSecurityTasks : shadowPolicyTasks;
+        let taskSequence;
+        if (exportSecurityTasks.includes(currentTaskName)) {
+            taskSequence = exportSecurityTasks;
+        } else if (shadowPolicyTasks.includes(currentTaskName)) {
+            taskSequence = shadowPolicyTasks;
+        } else {
+            taskSequence = blockImpactTasks;
+        }
         
         const currentIndex = taskSequence.indexOf(currentTaskName);
         return taskSequence[currentIndex + 1];
     };
 
+    const handleRestart = async () => {
+        try {
+            const response = await fetch(
+                `http://127.0.0.1:8000/restart-task/${projectId}/${task.name}`,
+                { method: 'POST' }
+            );
+            
+            if (response.ok) {
+                // 태스크 상태 업데이트
+                await onUpdate(task.name, 'Waiting', null);
+                setFormData({});  // 입력 필드 초기화
+                setError(null);   // 에러 상태 초기화
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.detail);
+            }
+        } catch (error) {
+            setError(error.message);
+            setShowErrorModal(true);
+        }
+    };
+
     return (
         <div className="border rounded p-4 mb-2" data-task-name={task.name}>
-            <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-                <h3 className="font-medium">{task.name}</h3>
-                <span className={`${
-                    task.status === 'Completed' ? 'text-green-500' :
-                    task.status === 'Error' ? 'text-red-500' :
-                    'text-gray-500'
-                }`}>
-                    {task.status}
-                </span>
+            <div className="flex justify-between items-center">
+                <div className="flex-grow cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
+                    <h3 className="font-medium">{task.name}</h3>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <span className={`${
+                        task.status === 'Completed' ? 'text-green-500' :
+                        task.status === 'Error' ? 'text-red-500' :
+                        'text-gray-500'
+                    }`}>
+                        {task.status}
+                    </span>
+                    {(task.status === 'Completed' || task.status === 'Error') && (
+                        <button
+                            className="text-sm text-blue-500 hover:text-blue-700"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleRestart();
+                            }}
+                        >
+                            Restart
+                        </button>
+                    )}
+                </div>
             </div>
 
             {isOpen && (
