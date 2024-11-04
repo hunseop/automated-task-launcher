@@ -10,7 +10,6 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
     const [projectStatus, setProjectStatus] = useState(project.status);
     const [resultData, setResultData] = useState(null);
 
-    // 날짜 포맷팅 함수
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('ko-KR', {
@@ -22,47 +21,31 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
         });
     };
 
-    // 아코디언 토글
     const toggleAccordion = () => setIsOpen(!isOpen);
 
-    // 태스크 상태 업데이트 핸들러
     const updateTaskStatus = async (taskName, newStatus, newProjectStatus) => {
         if (newProjectStatus) {
-            setProjectStatus(newProjectStatus); // 프로젝트 상태 업데이트
+            setProjectStatus(newProjectStatus);
         }
         await onUpdateTask(project.id, taskName, newStatus, newProjectStatus);
     };
 
-    // 프로젝트 상태 변경 감지 및 동기화
     useEffect(() => {
         setProjectStatus(project.status);
     }, [project.status]);
 
-    // 삭제 관련 핸들러
-    const handleDeleteClick = () => {
+    const handleDeleteClick = (e) => {
+        e.stopPropagation();
         setShowDeleteConfirm(true);
     };
 
-    const handleConfirmDelete = () => {
-        onDelete(project.id);
-        setShowDeleteConfirm(false);
-    };
-
-    const handleCancelDelete = () => {
-        setShowDeleteConfirm(false);
-    };
-
-    // 결과 데이터 가져오기
     useEffect(() => {
         const fetchResultData = async () => {
             if (!project.id || !isOpen) return;
-            
-            // 프로젝트가 완료 상태인지 확인
             if (project.status !== 'Completed') {
                 setResultData(null);
                 return;
             }
-            
             try {
                 const response = await fetch(
                     `http://127.0.0.1:8000/project-result/${project.id}`
@@ -72,8 +55,6 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                     if (data.result) {
                         setResultData(data.result);
                     }
-                } else {
-                    console.error("Failed to fetch result data:", response.statusText);
                 }
             } catch (error) {
                 console.error("Error fetching result data:", error);
@@ -84,44 +65,73 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
     }, [project.id, project.status, isOpen]);
 
     return (
-        <div className="p-2 border-b hover:bg-gray-100 relative border border-gray-300">
-            <div className="flex justify-between items-center">
-                <div className="flex-grow cursor-pointer" onClick={toggleAccordion}>
-                    <h2 className="text-lg font-medium">{project.name}</h2>
-                    <div className="text-sm text-gray-500 flex space-x-4">
-                        <span>Created on: {formatDate(project.created_at)}</span>
-                        <span className={`font-medium ${
-                            projectStatus === 'Completed' ? 'text-green-500' : 
-                            projectStatus === 'Error' ? 'text-red-500' : 
-                            'text-yellow-500'
-                        }`}>
-                            {projectStatus}
-                        </span>
+        <div className={`
+            bg-white/80 backdrop-blur-sm rounded-lg shadow-lg transition-all duration-200
+            ${isOpen ? 'border-blue-200 border-2' : 'border border-gray-200'}
+            hover:shadow-xl
+        `}>
+            {/* Project Header */}
+            <div 
+                className="p-4 cursor-pointer"
+                onClick={toggleAccordion}
+            >
+                <div className="flex justify-between items-center">
+                    <div className="flex-grow">
+                        <h2 className="text-xl font-semibold text-gray-800">{project.name}</h2>
+                        <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                            <span className="flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                {formatDate(project.created_at)}
+                            </span>
+                            <span className={`
+                                px-2 py-1 rounded-full text-xs font-medium
+                                ${projectStatus === 'Completed' ? 'bg-green-100 text-green-800' : 
+                                  projectStatus === 'Error' ? 'bg-red-100 text-red-800' : 
+                                  'bg-yellow-100 text-yellow-800'}
+                            `}>
+                                {projectStatus}
+                            </span>
+                        </div>
                     </div>
+                    <button
+                        className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50
+                                 transition-colors duration-200"
+                        onClick={handleDeleteClick}
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
                 </div>
-                <button
-                    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-                    onClick={handleDeleteClick}
-                >
-                    Delete
-                </button>
             </div>
 
+            {/* Delete Confirmation Modal */}
             {showDeleteConfirm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg">
-                        <h3 className="text-lg font-medium mb-4">프로젝트 삭제</h3>
-                        <p className="mb-4">정말로 "{project.name}" 프로젝트를 삭제하시겠습니까?</p>
-                        <div className="flex justify-end space-x-2">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">프로젝트 삭제</h3>
+                        <p className="text-gray-600 mb-6">
+                            정말로 "{project.name}" 프로젝트를 삭제하시겠습니까?
+                        </p>
+                        <div className="flex justify-end space-x-3">
                             <button
-                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                                onClick={handleCancelDelete}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium
+                                         hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                                onClick={() => setShowDeleteConfirm(false)}
                             >
                                 취소
                             </button>
                             <button
-                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                                onClick={handleConfirmDelete}
+                                className="px-4 py-2 bg-red-500 text-white font-medium rounded-lg
+                                         hover:bg-red-600 transition-colors duration-200"
+                                onClick={() => {
+                                    onDelete(project.id);
+                                    setShowDeleteConfirm(false);
+                                }}
                             >
                                 삭제
                             </button>
@@ -130,10 +140,11 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                 </div>
             )}
 
+            {/* Project Content */}
             {isOpen && (
-                <>
-                    <div className="mt-2">
-                        {project.tasks && project.tasks.map((task, index) => (
+                <div className="border-t border-gray-100">
+                    <div className="p-4 space-y-4">
+                        {project.tasks?.map((task, index) => (
                             <TaskCard
                                 key={task.id || index}
                                 task={task}
@@ -144,13 +155,12 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                         ))}
                     </div>
 
-                    {/* 프로젝트가 완료 상태이고 결과 데이터가 있을 때만 결과 카드 표시 */}
                     {project.status === 'Completed' && resultData && (
-                        <div className="mt-4 border-t pt-4">
+                        <div className="border-t border-gray-100 p-4">
                             <ProjectResultCard result={resultData} />
                         </div>
                     )}
-                </>
+                </div>
             )}
         </div>
     );

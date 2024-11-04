@@ -29,58 +29,52 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
     };
 
     const renderInputField = (field) => {
+        const baseInputClasses = "w-full px-3 py-2 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50";
+        
         switch (field.type) {
             case "text":
-                return (
-                    <input
-                        key={field.name}
-                        name={field.name}
-                        type="text"
-                        placeholder={field.placeholder}
-                        className="input-field"
-                        value={formData[field.name] || ""}
-                        onChange={handleInputChange}
-                    />
-                );
             case "password":
                 return (
-                    <input
-                        key={field.name}
-                        name={field.name}
-                        type="password"
-                        placeholder={field.placeholder}
-                        className="input-field"
-                        value={formData[field.name] || ""}
-                        onChange={handleInputChange}
-                    />
+                    <div key={field.name} className="flex-1">
+                        <input
+                            name={field.name}
+                            type={field.type}
+                            placeholder={field.placeholder}
+                            className={baseInputClasses}
+                            value={formData[field.name] || ""}
+                            onChange={handleInputChange}
+                        />
+                    </div>
                 );
             case "select":
                 return (
-                    <select
-                        key={field.name}
-                        name={field.name}
-                        className="input-field"
-                        value={formData[field.name] || ""}
-                        onChange={handleInputChange}
-                    >
-                        <option value="">Select {field.name}</option>
-                        {field.options.map(option => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                    <div key={field.name} className="flex-1">
+                        <select
+                            name={field.name}
+                            className={`${baseInputClasses} pr-10`}
+                            value={formData[field.name] || ""}
+                            onChange={handleInputChange}
+                        >
+                            <option value="">Select {field.name}</option>
+                            {field.options.map(option => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 );
             case "textarea":
                 return (
-                    <textarea
-                        key={field.name}
-                        name={field.name}
-                        placeholder={field.placeholder}
-                        className="input-field"
-                        value={formData[field.name] || ""}
-                        onChange={handleInputChange}
-                    />
+                    <div key={field.name} className="w-full">
+                        <textarea
+                            name={field.name}
+                            placeholder={field.placeholder}
+                            className={`${baseInputClasses} min-h-[100px] resize-y`}
+                            value={formData[field.name] || ""}
+                            onChange={handleInputChange}
+                        />
+                    </div>
                 );
             default:
                 return null;
@@ -137,6 +131,7 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                 );
 
                 if (data.task.status === 'Completed') {
+                    setIsOpen(false);  // 태스크 완료 시 접기
                     const nextTaskName = getNextTaskName(task.name);
                     if (nextTaskName) {
                         const nextTask = document.querySelector(`[data-task-name="${nextTaskName}"]`);
@@ -269,22 +264,36 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
     };
 
     return (
-        <div className="border rounded p-4 mb-2" data-task-name={task.name}>
-            <div className="flex justify-between items-center">
-                <div className="flex-grow cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-                    <h3 className="font-medium">{task.name}</h3>
+        <div className={`
+            bg-white/60 backdrop-blur-sm rounded-lg shadow-sm transition-all duration-300
+            ${isOpen ? 'shadow-lg ring-1 ring-blue-100' : 'hover:shadow-md'}
+            border border-blue-100/50
+        `} 
+        data-task-name={task.name}>
+            <div className="flex justify-between items-center p-4">
+                <div 
+                    className="flex items-center space-x-3 flex-grow cursor-pointer" 
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    <div className={`w-2 h-2 rounded-full ${
+                        task.status === 'Completed' ? 'bg-green-500' :
+                        task.status === 'Error' ? 'bg-red-500' :
+                        'bg-yellow-500'
+                    }`}/>
+                    <h3 className="font-medium text-gray-800">{task.name}</h3>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <span className={`${
-                        task.status === 'Completed' ? 'text-green-500' :
-                        task.status === 'Error' ? 'text-red-500' :
-                        'text-gray-500'
+                <div className="flex items-center space-x-3">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        task.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                        task.status === 'Error' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
                     }`}>
                         {task.status}
                     </span>
                     {(task.status === 'Completed' || task.status === 'Error') && (
                         <button
-                            className="text-sm text-blue-500 hover:text-blue-700"
+                            className="text-sm px-3 py-1 rounded-full bg-blue-50 text-blue-600 
+                                     hover:bg-blue-100 transition-all duration-200"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleRestart();
@@ -297,26 +306,45 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
             </div>
 
             {isOpen && (
-                <div className="mt-2 space-y-2">
+                <div className="border-t border-blue-50 p-4">
                     {inputFormat?.fields && (
-                        <>
-                            {inputFormat.fields.map(field => renderInputField(field))}
+                        <div className="space-y-4">
+                            {inputFormat.fields.some(field => field.type === 'textarea') ? (
+                                <div className="space-y-4">
+                                    {inputFormat.fields.map(field => renderInputField(field))}
+                                </div>
+                            ) : (
+                                <div className="flex space-x-4">
+                                    {inputFormat.fields.map(field => renderInputField(field))}
+                                </div>
+                            )}
+                            
                             {loading ? (
-                                <span className="text-gray-500">Updating...</span>
+                                <div className="flex justify-center py-2">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-2 
+                                                  border-blue-600 border-t-transparent"></div>
+                                </div>
                             ) : (
                                 <button 
-                                    className={`btn-primary ${task.status === 'Error' ? 'bg-red-500' : ''}`}
+                                    className="w-full py-2 px-4 rounded-lg font-medium bg-gradient-to-r 
+                                             from-blue-600 to-blue-700 text-white hover:from-blue-700 
+                                             hover:to-blue-800 transition-all duration-200 flex items-center 
+                                             justify-center space-x-2"
                                     onClick={handleContinue}
                                     disabled={loading}
                                 >
-                                    Continue
+                                    <span>Continue</span>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                              d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                    </svg>
                                 </button>
                             )}
-                        </>
+                        </div>
                     )}
                     
                     {task.name !== "Download Rules" && task.result && (
-                        <div className="mt-2">
+                        <div className="mt-2 p-3 bg-gray-50 rounded-lg">
                             <p className="text-sm text-gray-600">
                                 {task.result.message || JSON.stringify(task.result)}
                             </p>
@@ -325,13 +353,21 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                 </div>
             )}
 
+            {/* 에러 모달 */}
             {showErrorModal && error && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg">
-                        <h3 className="text-lg font-medium mb-4">Error</h3>
-                        <p className="mb-4 text-red-500">{error}</p>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+                        <div className="flex items-center space-x-3 text-red-600 mb-4">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h3 className="text-lg font-semibold">Error</h3>
+                        </div>
+                        <p className="text-gray-600 mb-6">{error}</p>
                         <button
-                            className="px-4 py-2 bg-blue-500 text-white rounded"
+                            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                                     transition-colors duration-200"
                             onClick={() => setShowErrorModal(false)}
                         >
                             Close

@@ -122,40 +122,66 @@ const ProjectBoard = () => {
         fetchProjectTypes();
     }, []);
 
-    if (loading) {
-        return <p>Loading...</p>;
-    }
-
     return (
-        <div className="container mx-auto mt-5">
-            <h1 className="text-2xl font-semibold mb-4">FPAT</h1>
-            <button className="btn-primary mb-4" onClick={handleNewProjectClick}>
-                New Project
-            </button>
+        <div className="min-h-screen bg-gradient-to-br from-blue-500/5 via-blue-500/10 to-indigo-500/20">
+            {/* Main Content */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+                {/* Hero Section */}
+                <div className="text-center py-16">
+                    <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 
+                                 bg-clip-text text-transparent animate-gradient">
+                        FPAT
+                    </h1>
+                    <p className="text-xl text-gray-600 mb-12 font-light">
+                        Firewall Policy Analysis Tool
+                    </p>
+                    <button 
+                        className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white px-8 py-3 rounded-lg
+                                 shadow-lg hover:shadow-xl transition-all duration-200 ease-in-out transform hover:scale-105
+                                 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800
+                                 border border-blue-400/20 backdrop-blur-sm"
+                        onClick={() => setShowDropdown(!showDropdown)}
+                    >
+                        New Project
+                    </button>
 
-            {showDropdown && (
-                <div className="dropdown bg-white border rounded shadow-lg p-2">
-                    {projectTypes.map((projectType, index) => (
-                        <div
-                            key={index}
-                            className="dropdown-item p-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => handleProjectSelect(projectType)}
-                        >
-                            {projectType.name}
+                    {/* Project Type Dropdown */}
+                    {showDropdown && (
+                        <div className="absolute mt-2 w-64 bg-white/80 rounded-lg shadow-xl border border-blue-100
+                                      backdrop-blur-md z-20 left-1/2 transform -translate-x-1/2">
+                            {projectTypes.map((projectType, index) => (
+                                <div
+                                    key={index}
+                                    className="px-4 py-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50
+                                             cursor-pointer first:rounded-t-lg last:rounded-b-lg transition-all duration-150
+                                             border-b border-blue-50 last:border-0"
+                                    onClick={() => handleProjectSelect(projectType)}
+                                >
+                                    {projectType.name}
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    )}
                 </div>
-            )}
 
-            <div className="space-y-2">
-                {projects.map((project) => (
-                    <ProjectCard
-                        key={project.id}
-                        project={project}
-                        onDelete={() => handleDeleteProject(project.id)}
-                        onUpdateTask={handleUpdateTask}
-                    />
-                ))}
+                {/* Projects Grid */}
+                <div className="grid gap-6 mb-8">
+                    {loading ? (
+                        <div className="flex justify-center items-center py-12">
+                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 
+                                          border-t-transparent shadow-lg"></div>
+                        </div>
+                    ) : (
+                        projects.map((project) => (
+                            <ProjectCard
+                                key={project.id}
+                                project={project}
+                                onDelete={handleDeleteProject}
+                                onUpdateTask={handleUpdateTask}
+                            />
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );
