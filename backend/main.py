@@ -14,6 +14,7 @@ from pathlib import Path
 import traceback
 import shutil
 from contextlib import contextmanager
+import sys
 
 # 프로젝트 관련 임포트
 from projects import project_templates
@@ -23,8 +24,32 @@ from task_manager import TASK_TYPE_HANDLERS, get_task_type_info, TaskType, TaskM
 RESULT_STORAGE_PATH = Path("../storage/results")
 RESULT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
-# 데이터베이스 설정
-DATABASE_URL = "sqlite:///../database/atl.db"
+# 실행 파일 위치 기준으로 절대 경로 설정
+if getattr(sys, 'frozen', False):
+    # PyInstaller로 패키징된 경우
+    BASE_DIR = Path(sys._MEIPASS).parent
+else:
+    # 개발 환경인 경우
+    BASE_DIR = Path(__file__).parent.parent
+
+# 사용자 홈 디렉토리에 저장소 생성
+USER_DATA_DIR = Path.home() / '.fpat'
+STORAGE_DIR = USER_DATA_DIR / 'storage'
+RESULT_DIR = STORAGE_DIR / 'results'
+DB_DIR = USER_DATA_DIR / 'database'
+
+try:
+    DB_DIR.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    DB_DIR = Path.home() / ".fpat" / "database"
+    DB_DIR.mkdir(parents=True, exist_ok=True)
+
+# 디렉토리 생성
+for directory in [USER_DATA_DIR, STORAGE_DIR, RESULT_DIR, DB_DIR]:
+    directory.mkdir(parents=True, exist_ok=True)
+
+# 데이터베이스 URL 설정
+DATABASE_URL = f"sqlite:///{DB_DIR}/atl.db"
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

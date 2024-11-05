@@ -6,10 +6,23 @@ from utils.firewall_utils import generate_random_policies, MOCK_FIREWALL_TYPES
 import json
 import os
 from pathlib import Path
+import sys
+
+# 실행 파일의 위치를 기준으로 절대 경로 설정
+if getattr(sys, 'frozen', False):
+    # PyInstaller로 패키징된 경우
+    BASE_DIR = Path(sys._MEIPASS)
+else:
+    # 개발 환경인 경우
+    BASE_DIR = Path(__file__).parent.parent
 
 # 결과 저장 디렉토리 설정
-RESULT_STORAGE_PATH = Path("../storage/results")
-if not RESULT_STORAGE_PATH.exists():
+RESULT_STORAGE_PATH = BASE_DIR / "storage" / "results"
+try:
+    RESULT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    # 권한 문제 발생 시 사용자 홈 디렉토리 사용
+    RESULT_STORAGE_PATH = Path.home() / ".fpat" / "storage" / "results"
     RESULT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 
 # 태스크 타입 정의
