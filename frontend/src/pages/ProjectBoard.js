@@ -14,7 +14,13 @@ const ProjectBoard = () => {
     // 프로젝트 목록 조회 함수
     const fetchProjects = async () => {
         try {
-            const response = await fetch("http://127.0.0.1:8000/projects");
+            const response = await fetch("http://127.0.0.1:8000/projects", {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
             if (!response.ok) throw new Error(`Failed to fetch projects: ${response.statusText}`);
             const data = await response.json();
             setProjects(data);
@@ -28,7 +34,13 @@ const ProjectBoard = () => {
     // 프로젝트 타입 목록 조회 함수
     const fetchProjectTypes = async () => {
         try {
-            const response = await fetch("http://127.0.0.1:8000/project-types");
+            const response = await fetch("http://127.0.0.1:8000/project-types", {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
             if (!response.ok) {
                 throw new Error(`Failed to fetch project types: ${response.statusText}`);
             }

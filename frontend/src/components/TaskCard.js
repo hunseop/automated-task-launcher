@@ -263,6 +263,34 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
         }
     };
 
+    // Continue 버튼을 컴포넌트 내부로 이동
+    const renderContinueButton = () => {
+        if (loading) {
+            return (
+                <div className="flex items-center justify-center w-8 h-8">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 
+                                  border-blue-600 border-t-transparent"></div>
+                </div>
+            );
+        }
+
+        return (
+            <button 
+                className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 
+                         transition-all duration-200 flex items-center justify-center
+                         shadow-sm hover:shadow focus:outline-none focus:ring-2 
+                         focus:ring-blue-500 focus:ring-offset-1"
+                onClick={handleContinue}
+                disabled={loading}
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                          d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </button>
+        );
+    };
+
     return (
         <div className={`
             bg-white/60 backdrop-blur-sm rounded-lg shadow-sm transition-all duration-300
@@ -270,7 +298,8 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
             border border-blue-100/50
         `} 
         data-task-name={task.name}>
-            <div className="flex justify-between items-center p-4">
+            {/* Task Header */}
+            <div className="flex justify-between items-center p-3">
                 <div 
                     className="flex items-center space-x-3 flex-grow cursor-pointer" 
                     onClick={() => setIsOpen(!isOpen)}
@@ -282,8 +311,8 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                     }`}/>
                     <h3 className="font-medium text-gray-800">{task.name}</h3>
                 </div>
-                <div className="flex items-center space-x-3">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         task.status === 'Completed' ? 'bg-green-100 text-green-800' :
                         task.status === 'Error' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'
@@ -292,59 +321,43 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                     </span>
                     {(task.status === 'Completed' || task.status === 'Error') && (
                         <button
-                            className="text-sm px-3 py-1 rounded-full bg-blue-50 text-blue-600 
-                                     hover:bg-blue-100 transition-all duration-200"
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-full 
+                                     transition-colors duration-200"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleRestart();
                             }}
                         >
-                            Restart
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
                         </button>
                     )}
                 </div>
             </div>
 
+            {/* Task Content */}
             {isOpen && (
-                <div className="border-t border-blue-50 p-4">
+                <div className="border-t border-blue-50">
                     {inputFormat?.fields && (
-                        <div className="space-y-4">
+                        <div className="p-3">
                             {inputFormat.fields.some(field => field.type === 'textarea') ? (
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {inputFormat.fields.map(field => renderInputField(field))}
+                                    {renderContinueButton()}
                                 </div>
                             ) : (
-                                <div className="flex space-x-4">
+                                <div className="flex items-center space-x-2">
                                     {inputFormat.fields.map(field => renderInputField(field))}
+                                    {renderContinueButton()}
                                 </div>
-                            )}
-                            
-                            {loading ? (
-                                <div className="flex justify-center py-2">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-2 
-                                                  border-blue-600 border-t-transparent"></div>
-                                </div>
-                            ) : (
-                                <button 
-                                    className="w-full py-2 px-4 rounded-lg font-medium bg-gradient-to-r 
-                                             from-blue-600 to-blue-700 text-white hover:from-blue-700 
-                                             hover:to-blue-800 transition-all duration-200 flex items-center 
-                                             justify-center space-x-2"
-                                    onClick={handleContinue}
-                                    disabled={loading}
-                                >
-                                    <span>Continue</span>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
-                                              d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                    </svg>
-                                </button>
                             )}
                         </div>
                     )}
                     
                     {task.name !== "Download Rules" && task.result && (
-                        <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                        <div className="px-3 pb-3">
                             <p className="text-sm text-gray-600">
                                 {task.result.message || JSON.stringify(task.result)}
                             </p>
@@ -353,7 +366,7 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                 </div>
             )}
 
-            {/* 에러 모달 */}
+            {/* Error Modal */}
             {showErrorModal && error && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">

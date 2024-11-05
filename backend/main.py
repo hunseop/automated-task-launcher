@@ -86,12 +86,15 @@ def get_db():
 # FastAPI 앱 설정
 app = FastAPI(title="Automated Task Launcher")
 
+# CORS 미들웨어 설정 수정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],  # 두 주소 모두 허용
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # 에러 핸들러
