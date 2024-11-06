@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import sys
+from firewall_client import FirewallClient
 
 # 실행 파일의 위치를 기준으로 절대 경로 설정
 if getattr(sys, 'frozen', False):
@@ -77,6 +78,9 @@ INPUT_FORMATS = {
 }
 
 class TaskManager:
+    # 클라이언트 인스턴스 저장을 위한 딕셔너리
+    firewall_clients = {}
+
     @staticmethod
     async def handle_firewall_type_selection(params: Dict[str, Any], previous_result: Dict[str, Any] = None) -> Dict[str, Any]:
         fw_type = params.get('type')
@@ -97,14 +101,15 @@ class TaskManager:
         ip = params.get('ip')
         id = params.get('id')
         pw = params.get('pw')
-        fw_type = previous_result.get('data', {}).get('firewall_type') if previous_result else None
-
-        if not all([ip, id, pw, fw_type]):
-            print(f"Missing parameters: ip={ip}, id={id}, pw={pw}, fw_type={fw_type}")
-            raise ValueError("Missing required connection parameters")
-
-        await asyncio.sleep(1)
-        if ip == "1.1.1.1" and id == "admin" and pw == "1234":
+        
+        try:
+            # FirewallClient 인스턴스 생성
+            client = FirewallClient(ip, id, pw)
+            await client.get_api_key()  # API 키 획득
+            
+            # 성공하면 클라이언트 저장
+            TaskManager.firewall_clients[ip] = client
+            
             return {
                 "success": True,
                 "message": "Successfully connected to firewall",
@@ -112,16 +117,16 @@ class TaskManager:
                     "connection_info": {
                         "ip": ip,
                         "id": id,
-                        "type": fw_type,
                         "connected_at": datetime.now().isoformat()
                     }
                 }
             }
-        return {
-            "success": False,
-            "message": "Failed to connect to firewall",
-            "data": {}
-        }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Failed to connect: {str(e)}",
+                "data": {}
+            }
 
     @staticmethod
     async def handle_config_import(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -132,18 +137,30 @@ class TaskManager:
         if not connection_info:
             raise ValueError("Connection information not found")
 
-        fw_type = connection_info.get('type')
-        policies = generate_random_policies(30000)
-        
-        return {
-            "success": True,
-            "message": f"Successfully extracted {len(policies)} policies",
-            "data": {
-                "policies": policies,
-                "total_policies": len(policies),
-                "extracted_at": datetime.now().isoformat()
+        ip = connection_info.get('ip')
+        client = TaskManager.firewall_clients.get(ip)
+        if not client:
+            raise ValueError("Firewall client not found")
+
+        try:
+            # 저장된 클라이언트를 사용하여 정책 조회
+            policies = await client.get_policies()
+            
+            return {
+                "success": True,
+                "message": f"Successfully extracted {len(policies)} policies",
+                "data": {
+                    "policies": policies,
+                    "total_policies": len(policies),
+                    "extracted_at": datetime.now().isoformat()
+                }
             }
-        }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Failed to import configuration: {str(e)}",
+                "data": {}
+            }
 
     @staticmethod
     async def handle_policy_processing(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
