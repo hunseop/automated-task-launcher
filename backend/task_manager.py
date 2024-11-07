@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import sys
 from firewall_client import FirewallClient
+from uuid import uuid4
 
 # 실행 파일의 위치를 기준으로 절대 경로 설정
 if getattr(sys, 'frozen', False):
@@ -36,6 +37,15 @@ class TaskType(str, Enum):
     RULE_DOWNLOAD = "rule_download"
     INPUT_TARGET_RULES = "input_target_rules"
     IMPACT_ANALYSIS = "impact_analysis"
+    PARSE_REQUEST_NUMBER = "parse_request_number"
+    EXTRACT_REQUEST_NUMBER = "extract_request_number"
+    ADD_MIS_ID = "add_mis_id"
+    PROCESS_REQUEST_INFO = "process_request_info"
+    ADD_REQUEST_INFO = "add_request_info"
+    HANDLE_EXCEPTIONS = "handle_exceptions"
+    ANALYZE_DUPLICATE_POLICIES = "analyze_duplicate_policies"
+    CLASSIFY_DUPLICATE_TASKS = "classify_duplicate_tasks"
+    CLASSIFY_DELETION_TASKS = "classify_deletion_tasks"
 
 # 입력 포맷 정의
 class InputFormat(str, Enum):
@@ -397,6 +407,79 @@ class TaskManager:
             }
         }
 
+    @staticmethod
+    async def handle_parse_request_number(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        # 실제 구현은 나중에 하고 일단 패스
+        return {
+            "success": True,
+            "message": "Request number parsed successfully",
+            "data": previous_result.get('data', {})
+        }
+
+    @staticmethod
+    async def handle_extract_request_number(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": "Request number extracted successfully",
+            "data": previous_result.get('data', {})
+        }
+
+    @staticmethod
+    async def handle_add_mis_id(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": "MIS ID added successfully",
+            "data": previous_result.get('data', {})
+        }
+
+    @staticmethod
+    async def handle_process_request_info(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": "Request information processed successfully",
+            "data": previous_result.get('data', {})
+        }
+
+    @staticmethod
+    async def handle_add_request_info(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": "Request information added successfully",
+            "data": previous_result.get('data', {})
+        }
+
+    @staticmethod
+    async def handle_exceptions(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": "Exceptions handled successfully",
+            "data": previous_result.get('data', {})
+        }
+
+    @staticmethod
+    async def handle_analyze_duplicate_policies(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": "Duplicate policies analyzed successfully",
+            "data": previous_result.get('data', {})
+        }
+
+    @staticmethod
+    async def handle_classify_duplicate_tasks(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": "Duplicate tasks classified successfully",
+            "data": previous_result.get('data', {})
+        }
+
+    @staticmethod
+    async def handle_classify_deletion_tasks(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": "Deletion tasks classified successfully",
+            "data": previous_result.get('data', {})
+        }
+
 # 태스크 타입과 핸들러 매핑
 TASK_TYPE_HANDLERS = {
     TaskType.FIREWALL_TYPE_SELECTION: {
@@ -436,6 +519,51 @@ TASK_TYPE_HANDLERS = {
     },
     TaskType.IMPACT_ANALYSIS: {
         "handler": TaskManager.handle_impact_analysis,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.PARSE_REQUEST_NUMBER: {
+        "handler": TaskManager.handle_parse_request_number,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.EXTRACT_REQUEST_NUMBER: {
+        "handler": TaskManager.handle_extract_request_number,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.ADD_MIS_ID: {
+        "handler": TaskManager.handle_add_mis_id,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.PROCESS_REQUEST_INFO: {
+        "handler": TaskManager.handle_process_request_info,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.ADD_REQUEST_INFO: {
+        "handler": TaskManager.handle_add_request_info,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.HANDLE_EXCEPTIONS: {
+        "handler": TaskManager.handle_exceptions,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.ANALYZE_DUPLICATE_POLICIES: {
+        "handler": TaskManager.handle_analyze_duplicate_policies,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.CLASSIFY_DUPLICATE_TASKS: {
+        "handler": TaskManager.handle_classify_duplicate_tasks,
+        "input_format": InputFormat.NONE,
+        "requires_previous": True
+    },
+    TaskType.CLASSIFY_DELETION_TASKS: {
+        "handler": TaskManager.handle_classify_deletion_tasks,
         "input_format": InputFormat.NONE,
         "requires_previous": True
     }

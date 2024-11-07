@@ -23,107 +23,96 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
     }, [policies]);
     
     const columns = useMemo(
-        () => {
-            const baseColumns = [
-                columnHelper.accessor('vsys', {
-                    header: 'VSYS',
-                    cell: info => info.getValue(),
-                }),
-                columnHelper.accessor('seq', {
-                    header: 'Sequence',
-                    cell: info => info.getValue(),
-                }),
-                columnHelper.accessor('rulename', {
-                    header: 'Rule Name',
-                    cell: info => info.getValue(),
-                }),
-                columnHelper.accessor('action', {
-                    header: 'Action',
-                    cell: info => info.getValue(),
-                }),
-                columnHelper.accessor('source', {
-                    header: 'Source',
-                    cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
-                }),
-                columnHelper.accessor('destination', {
-                    header: 'Destination',
-                    cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
-                }),
-                columnHelper.accessor('service', {
-                    header: 'Service',
-                    cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
-                })
-            ];
-
-            // 첫 번째 정책에 shadow_type이 있으면 Shadow Policy Analysis 결과로 판단
-            if (data[0]?.shadow_type) {
-                baseColumns.push(
-                    columnHelper.accessor('shadow_type', {
-                        header: 'Shadow Type',
-                        cell: info => (
-                            <span className={info.getValue() === 'Redundant' ? 'text-yellow-500' : 'text-red-500'}>
-                                {info.getValue()}
+        () => [
+            columnHelper.accessor('vsys', {
+                header: 'VSYS',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('seq', {
+                header: 'Sequence',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('rulename', {
+                header: 'Rule Name',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('action', {
+                header: 'Action',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('source', {
+                header: 'Source',
+                cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
+            }),
+            columnHelper.accessor('destination', {
+                header: 'Destination',
+                cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
+            }),
+            columnHelper.accessor('service', {
+                header: 'Service',
+                cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
+            }),
+            columnHelper.accessor('risk_level', {
+                header: 'Risk Level',
+                cell: info => (
+                    <span className={
+                        info.getValue() === 'high' ? 'text-red-600' :
+                        info.getValue() === 'medium' ? 'text-yellow-600' :
+                        'text-green-600'
+                    }>
+                        {info.getValue()}
+                    </span>
+                ),
+            }),
+            columnHelper.accessor('description', {
+                header: 'Description',
+                cell: info => (
+                    <div className="max-w-md truncate" title={info.getValue()}>
+                        {info.getValue()}
+                    </div>
+                ),
+            }),
+            columnHelper.accessor('last_hit', {
+                header: 'Last Hit',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('hit_count', {
+                header: 'Hit Count',
+                cell: info => info.getValue().toLocaleString(),
+            }),
+            columnHelper.accessor('created_by', {
+                header: 'Created By',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('created_date', {
+                header: 'Created Date',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('modified_by', {
+                header: 'Modified By',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('modified_date', {
+                header: 'Modified Date',
+                cell: info => info.getValue(),
+            }),
+            columnHelper.accessor('tags', {
+                header: 'Tags',
+                cell: info => (
+                    <div className="flex flex-wrap gap-1">
+                        {Array.isArray(info.getValue()) && info.getValue().map((tag, index) => (
+                            <span 
+                                key={index}
+                                className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800"
+                            >
+                                {tag}
                             </span>
-                        ),
-                    }),
-                    columnHelper.accessor('shadowed_by', {
-                        header: 'Shadowed By',
-                        cell: info => info.getValue(),
-                    })
-                );
-            }
-            // 첫 번째 정책에 impact_details가 있으면 Block Impact Analysis 결과로 판단
-            else if (data[0]?.impact_details) {
-                baseColumns.push(
-                    columnHelper.accessor('impact_details', {
-                        header: 'Impact Details',
-                        cell: info => {
-                            const details = info.getValue();
-                            return (
-                                <div className="text-sm">
-                                    <div>Overlapping Sources: {details.overlapping_sources.join(', ')}</div>
-                                    <div>Overlapping Destinations: {details.overlapping_destinations.join(', ')}</div>
-                                    <div>Overlapping Services: {details.overlapping_services.join(', ')}</div>
-                                </div>
-                            );
-                        },
-                    })
-                );
-            }
-            // Block Impact Analysis 결과 처리
-            else if (data[0]?.analysis_type === "Target Rule") {
-                baseColumns.push(
-                    columnHelper.accessor('analysis_type', {
-                        header: 'Analysis Type',
-                        cell: info => (
-                            <span className="text-blue-500 font-medium">
-                                {info.getValue()}
-                            </span>
-                        ),
-                    }),
-                    columnHelper.accessor('impact_summary', {
-                        header: 'Impact Summary',
-                        cell: info => info.getValue(),
-                    })
-                );
-            }
-            // 기본 정책 목록인 경우
-            else {
-                baseColumns.push(
-                    columnHelper.accessor('risk_level', {
-                        header: 'Risk Level',
-                        cell: info => (
-                            <span className={info.getValue() === 'high' ? 'text-red-500' : 'text-green-500'}>
-                                {info.getValue()}
-                            </span>
-                        ),
-                    })
-                );
-            }
-
-            return baseColumns;
-        },
-        [data]
+                        ))}
+                    </div>
+                ),
+            }),
+        ],
+        []
     );
 
     const table = useReactTable({
@@ -195,7 +184,7 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
         
-        // 프로젝트명과 타입으�� 파일명 생성
+        // 프로젝트명과 타입으 파일명 생성
         const projectName = projectInfo?.name || 'unknown';
         const projectType = projectInfo?.type || 'unknown';
         const fileName = `${dateStr}_${projectName}_${projectType}.xlsx`;

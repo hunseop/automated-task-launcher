@@ -62,6 +62,24 @@ project_templates = [
             {"name": "Process Impact Analysis", "type": TaskType.IMPACT_ANALYSIS},
             {"name": "Download Rules", "type": TaskType.RULE_DOWNLOAD}
         ]
+    },
+    {
+        "name": "Analysis of Policy Deletion Targets",
+        "tasks": [
+            {"name": "Select a Firewall Type", "type": TaskType.FIREWALL_TYPE_SELECTION},
+            {"name": "Connect to Firewall", "type": TaskType.FIREWALL_CONNECTION},
+            {"name": "Import Configuration", "type": TaskType.CONFIG_IMPORT},
+            {"name": "Parse Request Number", "type": TaskType.PARSE_REQUEST_NUMBER},
+            {"name": "Extract Request Number", "type": TaskType.EXTRACT_REQUEST_NUMBER},
+            {"name": "Add MIS ID", "type": TaskType.ADD_MIS_ID},
+            {"name": "Process Request Info", "type": TaskType.PROCESS_REQUEST_INFO},
+            {"name": "Add Request Info", "type": TaskType.ADD_REQUEST_INFO},
+            {"name": "Handle Exceptions", "type": TaskType.HANDLE_EXCEPTIONS},
+            {"name": "Analyze Duplicate Policies", "type": TaskType.ANALYZE_DUPLICATE_POLICIES},
+            {"name": "Parse Request Number", "type": TaskType.PARSE_REQUEST_NUMBER},
+            {"name": "Classify Duplicate Tasks", "type": TaskType.CLASSIFY_DUPLICATE_TASKS},
+            {"name": "Classify Deletion Tasks", "type": TaskType.CLASSIFY_DELETION_TASKS}
+        ]
     }
 ]
 
