@@ -6,7 +6,7 @@ import ProjectResultCard from "./ProjectResultCard";
 
 const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [isTasksExpanded, setIsTasksExpanded] = useState(true);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [projectStatus, setProjectStatus] = useState(project.status);
     const [resultData, setResultData] = useState(null);
 
@@ -36,7 +36,7 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
 
     const handleDeleteClick = (e) => {
         e.stopPropagation();
-        onDelete(project);
+        setShowDeleteConfirm(true);
     };
 
     useEffect(() => {
@@ -65,33 +65,31 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
     }, [project.id, project.status, isOpen]);
 
     return (
-        <div className="bg-white/60 backdrop-blur-sm rounded-lg shadow-lg border border-blue-100/50 transition-all duration-200">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-lg transition-all duration-200 w-full min-w-0 overflow-hidden">
             {/* Project Header */}
             <div className="p-4 cursor-pointer" onClick={toggleAccordion}>
                 <div className="flex justify-between items-center">
-                    <div className="flex-grow">
-                        <h2 className="text-xl font-semibold text-gray-800">{project.name}</h2>
+                    <div className="flex-grow min-w-0">
+                        <h2 className="text-xl font-semibold text-gray-800 truncate">{project.name}</h2>
                         <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
                             <span className="flex items-center">
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
                                           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                                 {formatDate(project.created_at)}
                             </span>
-                            <span className={`
-                                px-2 py-1 rounded-full text-xs font-medium
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0
                                 ${projectStatus === 'Completed' ? 'bg-green-100 text-green-800' : 
                                   projectStatus === 'Error' ? 'bg-red-100 text-red-800' : 
-                                  'bg-yellow-100 text-yellow-800'}
-                            `}>
+                                  'bg-yellow-100 text-yellow-800'}`}>
                                 {projectStatus}
                             </span>
                         </div>
                     </div>
                     <button
                         className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50
-                                 transition-colors duration-200"
+                                 transition-colors duration-200 flex-shrink-0"
                         onClick={handleDeleteClick}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,56 +102,55 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
 
             {/* Project Content */}
             {isOpen && (
-                <div className="border-t border-gray-100 space-y-4 p-4">
-                    {/* Tasks Section - 별도 프레임으로 분리 */}
-                    <div className="bg-white/60 backdrop-blur-sm rounded-lg shadow-lg border border-blue-100/50 transition-all duration-200">
-                        <div 
-                            className="p-4 border-b border-blue-50 cursor-pointer hover:bg-gray-50/50 transition-colors duration-200"
-                            onClick={() => setIsTasksExpanded(!isTasksExpanded)}
-                        >
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
-                                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                    </svg>
-                                    <h3 className="text-lg font-semibold text-gray-800">Tasks</h3>
-                                </div>
-                                <svg 
-                                    className={`w-5 h-5 text-gray-500 transform transition-transform duration-200 ${isTasksExpanded ? 'rotate-90' : ''}`}
-                                    fill="none" 
-                                    stroke="currentColor" 
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </div>
-                        </div>
-                        <div className={`transition-all duration-200 ${isTasksExpanded ? 'p-4' : 'hidden'}`}>
-                            <div className="space-y-4">
-                                {project.tasks?.map((task, index) => (
-                                    <TaskCard
-                                        key={task.id || index}
-                                        task={task}
-                                        projectId={project.id}
-                                        previousTask={index > 0 ? project.tasks[index - 1] : null}
-                                        onUpdate={updateTaskStatus}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                <div className="border-t border-gray-100 w-full min-w-0">
+                    <div className="p-4 space-y-4 w-full min-w-0">
+                        {project.tasks?.map((task, index) => (
+                            <TaskCard
+                                key={task.id || index}
+                                task={task}
+                                projectId={project.id}
+                                previousTask={index > 0 ? project.tasks[index - 1] : null}
+                                onUpdate={updateTaskStatus}
+                            />
+                        ))}
                     </div>
 
-                    {/* Results Section */}
                     {project.status === 'Completed' && resultData && (
-                        <ProjectResultCard 
-                            result={resultData}
-                            projectInfo={{
-                                name: project.name,
-                                type: project.tasks[0]?.type
-                            }}
-                        />
+                        <div className="border-t border-gray-100 p-4 w-full min-w-0">
+                            <ProjectResultCard result={resultData} />
+                        </div>
                     )}
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">프로젝트 삭제</h3>
+                        <p className="text-gray-600 mb-6">
+                            정말로 "{project.name}" 프로젝트를 삭제하시겠습니까?
+                        </p>
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium
+                                         hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                                onClick={() => setShowDeleteConfirm(false)}
+                            >
+                                취소
+                            </button>
+                            <button
+                                className="px-4 py-2 bg-red-500 text-white font-medium rounded-lg
+                                         hover:bg-red-600 transition-colors duration-200"
+                                onClick={() => {
+                                    onDelete(project.id);
+                                    setShowDeleteConfirm(false);
+                                }}
+                            >
+                                삭제
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
