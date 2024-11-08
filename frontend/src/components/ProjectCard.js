@@ -36,7 +36,7 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
 
     const handleDeleteClick = (e) => {
         e.stopPropagation();
-        setShowDeleteConfirm(true);
+        onDelete(project);
     };
 
     useEffect(() => {
@@ -89,7 +89,7 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                     </div>
                     <button
                         className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50
-                                 transition-colors duration-200 flex-shrink-0"
+                                 transition-colors duration-200"
                         onClick={handleDeleteClick}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,37 +120,6 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                             <ProjectResultCard result={resultData} />
                         </div>
                     )}
-                </div>
-            )}
-
-            {/* Delete Confirmation Modal */}
-            {showDeleteConfirm && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">프로젝트 삭제</h3>
-                        <p className="text-gray-600 mb-6">
-                            정말로 "{project.name}" 프로젝트를 삭제하시겠습니까?
-                        </p>
-                        <div className="flex justify-end space-x-3">
-                            <button
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium
-                                         hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                                onClick={() => setShowDeleteConfirm(false)}
-                            >
-                                취소
-                            </button>
-                            <button
-                                className="px-4 py-2 bg-red-500 text-white font-medium rounded-lg
-                                         hover:bg-red-600 transition-colors duration-200"
-                                onClick={() => {
-                                    onDelete(project.id);
-                                    setShowDeleteConfirm(false);
-                                }}
-                            >
-                                삭제
-                            </button>
-                        </div>
-                    </div>
                 </div>
             )}
         </div>
