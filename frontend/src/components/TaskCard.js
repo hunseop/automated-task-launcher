@@ -369,8 +369,22 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
 
             {/* Error Modal */}
             {showErrorModal && error && createPortal(
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+                <div className="fixed inset-0 flex items-center justify-center"
+                     style={{
+                         backgroundColor: 'rgba(0, 0, 0, 0.5)',  // opacity 대신 rgba 사용
+                         zIndex: 9999,
+                         position: 'fixed',
+                         top: 0,
+                         right: 0,
+                         bottom: 0,
+                         left: 0
+                     }}>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4"
+                         style={{
+                             position: 'relative',
+                             transform: 'none',  // transform 대신 position 사용
+                             margin: 'auto'
+                         }}>
                         <div className="flex items-center space-x-3 text-red-600 mb-4">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
@@ -388,7 +402,7 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                         </button>
                     </div>
                 </div>,
-                document.body  // 모달을 body에 직접 렌더링
+                document.body
             )}
         </div>
     );
