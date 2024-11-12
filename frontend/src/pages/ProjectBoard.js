@@ -15,6 +15,7 @@ const ProjectBoard = () => {
     const [showNameModal, setShowNameModal] = useState(false);
     const [selectedProjectType, setSelectedProjectType] = useState(null);
     const [projectName, setProjectName] = useState('');
+    const [showLimitModal, setShowLimitModal] = useState(false);  // 제한 알림 모달 상태 추가
 
     // 프로젝트 목록 조회 함수
     const fetchProjects = async () => {
@@ -123,6 +124,15 @@ const ProjectBoard = () => {
             return;
         }
 
+        // 프로젝트 수 제한 체크
+        if (projects.length >= 5) {
+            setShowLimitModal(true);  // 모달 표시
+            setShowNameModal(false);
+            setSelectedProjectType(null);
+            setProjectName('');
+            return;
+        }
+
         const newProject = {
             name: `${projectName} - ${selectedProjectType.name}`,
             tasks: selectedProjectType.tasks.map(task => ({
@@ -161,8 +171,8 @@ const ProjectBoard = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-500/5 via-blue-500/10 to-indigo-500/20">
-            {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+            {/* Main Content - 하단 여백 추가 */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16">
                 {/* Hero Section */}
                 <div className="text-center py-16">
                     <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 
@@ -201,8 +211,8 @@ const ProjectBoard = () => {
                     )}
                 </div>
 
-                {/* Projects Grid */}
-                <div className="w-full min-w-0 overflow-x-auto">
+                {/* Projects Grid - 하단 여백 추가 */}
+                <div className="w-full min-w-0 overflow-x-auto mb-8">
                     <div className="grid gap-6">
                         {loading ? (
                             <div className="flex justify-center items-center py-12">
@@ -301,6 +311,33 @@ const ProjectBoard = () => {
                                 disabled={!projectName.trim()}
                             >
                                 Create Project
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Project Limit Modal */}
+            {showLimitModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+                        <div className="flex items-center space-x-3 mb-4">
+                            <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <h3 className="text-lg font-semibold text-gray-900">프로젝트 생성 제한</h3>
+                        </div>
+                        <p className="text-gray-600 mb-6">
+                            최대 5개의 프로젝트만 생성할 수 있습니다. 새 프로젝트를 생성하려면 기존 프로젝트를 삭제해주세요.
+                        </p>
+                        <div className="flex justify-end">
+                            <button
+                                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg
+                                         hover:bg-blue-700 transition-colors duration-200"
+                                onClick={() => setShowLimitModal(false)}
+                            >
+                                확인
                             </button>
                         </div>
                     </div>
