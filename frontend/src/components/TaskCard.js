@@ -289,20 +289,23 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
     };
 
     // Continue 버튼을 컴포넌트 내부로 이동
-    const renderContinueButton = () => (
-        <button
-            className="px-4 py-2 text-sm font-medium rounded-lg
-                     bg-blue-600 dark:bg-blue-700 text-white
-                     hover:bg-blue-700 dark:hover:bg-blue-600
-                     hover:shadow-md active:transform active:scale-95
-                     transition-all duration-200
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleContinue}
-            disabled={loading || !!error || (previousTask && previousTask.status !== 'Completed')}
-        >
-            Continue
-        </button>
-    );
+    const renderContinueButton = () => {
+        const isContinueDisabled = loading || !!error || (previousTask && previousTask.status !== 'Completed');
+
+        return (
+            <button
+                className="px-4 py-2 text-sm font-medium rounded-lg
+                         bg-blue-600 dark:bg-blue-700 text-white
+                         hover:bg-blue-700 dark:hover:bg-blue-600
+                         hover:shadow-md active:transform active:scale-95
+                         transition-all duration-200"
+                onClick={handleContinue}
+                disabled={isContinueDisabled}
+            >
+                Continue
+            </button>
+        );
+    };
 
     return (
         <div className="bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-sm 
@@ -356,12 +359,20 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                         <div className="p-3">
                             {inputFormat.fields.some(field => field.type === 'textarea') ? (
                                 <div className="space-y-3">
-                                    {inputFormat.fields.map(field => renderInputField(field))}
+                                    {inputFormat.fields.map(field => (
+                                        <div key={field.name || field.id}>
+                                            {renderInputField(field)}
+                                        </div>
+                                    ))}
                                     {renderContinueButton()}
                                 </div>
                             ) : (
                                 <div className="flex flex-wrap items-center gap-2 mt-3">
-                                    {inputFormat.fields.map(field => renderInputField(field))}
+                                    {inputFormat.fields.map(field => (
+                                        <div key={field.name || field.id}>
+                                            {renderInputField(field)}
+                                        </div>
+                                    ))}
                                     {renderContinueButton()}
                                 </div>
                             )}
@@ -395,7 +406,10 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                             className="w-full py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg 
                                      hover:bg-blue-700 dark:hover:bg-blue-600 
                                      transition-colors duration-200"
-                            onClick={() => setShowErrorModal(false)}
+                            onClick={() => {
+                                setShowErrorModal(false);
+                                setError(null); // 에러 상태 초기화
+                            }}
                         >
                             Close
                         </button>
