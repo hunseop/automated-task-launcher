@@ -24,58 +24,82 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
         }
     }, [previousTask, task.name, previousTask?.status]);
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+    const handleInputChange = (fieldName, value) => {
+        if (!fieldName) return;
+        
+        setFormData(prevData => ({
+            ...prevData,
+            [fieldName]: value
+        }));
     };
 
     const renderInputField = (field) => {
-        const baseInputClasses = "w-full px-3 py-2 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/50";
-        
+        if (!field || !field.name) return null;
+
         switch (field.type) {
-            case "text":
-            case "password":
+            case 'text':
                 return (
-                    <div key={field.name} className="flex-1">
-                        <input
-                            name={field.name}
-                            type={field.type}
-                            placeholder={field.placeholder}
-                            className={baseInputClasses}
-                            value={formData[field.name] || ""}
-                            onChange={handleInputChange}
-                        />
-                    </div>
+                    <input
+                        type={field.name === 'pw' ? 'password' : 'text'}
+                        placeholder={field.placeholder}
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600
+                                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                                 placeholder-gray-400 dark:placeholder-gray-500"
+                        onChange={(e) => handleInputChange(field.name, e.target.value)}
+                        value={formData[field.name] || ''}
+                    />
                 );
-            case "select":
+            case 'password':
                 return (
-                    <div key={field.name} className="flex-1">
-                        <select
-                            name={field.name}
-                            className={`${baseInputClasses} pr-10`}
-                            value={formData[field.name] || ""}
-                            onChange={handleInputChange}
-                        >
-                            <option value="">Select {field.name}</option>
-                            {field.options.map(option => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <input
+                        type="password"
+                        placeholder={field.placeholder}
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600
+                                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                                 placeholder-gray-400 dark:placeholder-gray-500"
+                        onChange={(e) => handleInputChange(field.name, e.target.value)}
+                        value={formData[field.name] || ''}
+                    />
                 );
-            case "textarea":
+            case 'select':
                 return (
-                    <div key={field.name} className="w-full">
-                        <textarea
-                            name={field.name}
-                            placeholder={field.placeholder}
-                            className={`${baseInputClasses} min-h-[100px] resize-y`}
-                            value={formData[field.name] || ""}
-                            onChange={handleInputChange}
-                        />
-                    </div>
+                    <select
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600
+                                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                                 cursor-pointer"
+                        onChange={(e) => handleInputChange(field.name, e.target.value)}
+                        value={formData[field.name] || ''}
+                    >
+                        <option value="" className="text-gray-400 dark:text-gray-500">
+                            {field.placeholder || 'Select an option'}
+                        </option>
+                        {field.options?.map((option, index) => (
+                            <option 
+                                key={index} 
+                                value={option.value || option}
+                                className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
+                            >
+                                {option.label || option}
+                            </option>
+                        ))}
+                    </select>
+                );
+            case 'textarea':
+                return (
+                    <textarea
+                        placeholder={field.placeholder}
+                        rows={4}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600
+                                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                                 placeholder-gray-400 dark:placeholder-gray-500
+                                 resize-none"
+                        onChange={(e) => handleInputChange(field.name, e.target.value)}
+                        value={formData[field.name] || ''}
+                    />
                 );
             default:
                 return null;
@@ -265,39 +289,26 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
     };
 
     // Continue 버튼을 컴포넌트 내부로 이동
-    const renderContinueButton = () => {
-        if (loading) {
-            return (
-                <div className="flex items-center justify-center w-8 h-8">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 
-                                  border-blue-600 border-t-transparent"></div>
-                </div>
-            );
-        }
-
-        return (
-            <button 
-                className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 
-                         transition-all duration-200 flex items-center justify-center
-                         shadow-sm hover:shadow focus:outline-none focus:ring-2 
-                         focus:ring-blue-500 focus:ring-offset-1"
-                onClick={handleContinue}
-                disabled={loading}
-            >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
-                          d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-            </button>
-        );
-    };
+    const renderContinueButton = () => (
+        <button
+            className="px-4 py-2 text-sm font-medium rounded-lg
+                     bg-blue-600 dark:bg-blue-700 text-white
+                     hover:bg-blue-700 dark:hover:bg-blue-600
+                     hover:shadow-md active:transform active:scale-95
+                     transition-all duration-200
+                     disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleContinue}
+            disabled={loading || !!error || (previousTask && previousTask.status !== 'Completed')}
+        >
+            Continue
+        </button>
+    );
 
     return (
-        <div className={`
-            bg-white/60 backdrop-blur-sm rounded-lg shadow-sm transition-all duration-300
-            ${isOpen ? 'shadow-lg ring-1 ring-blue-100' : 'hover:shadow-md'}
-            border border-blue-100/50
-        `} 
+        <div className="bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-sm 
+            border border-gray-100 dark:border-gray-700 
+            hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700
+            transition-all duration-200 overflow-hidden group" 
         data-task-name={task.name}>
             {/* Task Header */}
             <div className="flex justify-between items-center p-3">
@@ -306,24 +317,24 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                     onClick={() => setIsOpen(!isOpen)}
                 >
                     <div className={`w-2 h-2 rounded-full ${
-                        task.status === 'Completed' ? 'bg-green-500' :
-                        task.status === 'Error' ? 'bg-red-500' :
-                        'bg-yellow-500'
+                        task.status === 'Completed' ? 'bg-green-500 dark:bg-green-400' :
+                        task.status === 'Error' ? 'bg-red-500 dark:bg-red-400' :
+                        'bg-yellow-500 dark:bg-yellow-400'
                     }`}/>
-                    <h3 className="font-medium text-gray-800">{task.name}</h3>
+                    <h3 className="font-medium text-gray-800 dark:text-gray-200">{task.name}</h3>
                 </div>
                 <div className="flex items-center space-x-2">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        task.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                        task.status === 'Error' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
+                        task.status === 'Completed' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-100' :
+                        task.status === 'Error' ? 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-100' :
+                        'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-100'
                     }`}>
                         {task.status}
                     </span>
                     {(task.status === 'Completed' || task.status === 'Error') && (
                         <button
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-full 
-                                     transition-colors duration-200"
+                            className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/50 
+                                     rounded-full transition-colors duration-200"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleRestart();
@@ -340,7 +351,7 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
 
             {/* Task Content */}
             {isOpen && (
-                <div className="border-t border-blue-50">
+                <div className="border-t border-blue-50 dark:border-gray-700">
                     {inputFormat?.fields && (
                         <div className="p-3">
                             {inputFormat.fields.some(field => field.type === 'textarea') ? (
@@ -359,7 +370,7 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                     
                     {task.name !== "Download Rules" && task.result && (
                         <div className="px-3 pb-3">
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
                                 {task.result.message || JSON.stringify(task.result)}
                             </p>
                         </div>
@@ -369,32 +380,20 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
 
             {/* Error Modal */}
             {showErrorModal && error && createPortal(
-                <div className="fixed inset-0 flex items-center justify-center"
-                     style={{
-                         backgroundColor: 'rgba(0, 0, 0, 0.5)',  // opacity 대신 rgba 사용
-                         zIndex: 9999,
-                         position: 'fixed',
-                         top: 0,
-                         right: 0,
-                         bottom: 0,
-                         left: 0
-                     }}>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4"
-                         style={{
-                             position: 'relative',
-                             transform: 'none',  // transform 대신 position 사용
-                             margin: 'auto'
-                         }}>
-                        <div className="flex items-center space-x-3 text-red-600 mb-4">
+                <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm 
+                             flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md mx-4">
+                        <div className="flex items-center space-x-3 text-red-600 dark:text-red-400 mb-4">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
                                       d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <h3 className="text-lg font-semibold">Error</h3>
                         </div>
-                        <p className="text-gray-600 mb-6">{error}</p>
+                        <p className="text-gray-600 dark:text-gray-300 mb-6">{error}</p>
                         <button
-                            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                            className="w-full py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg 
+                                     hover:bg-blue-700 dark:hover:bg-blue-600 
                                      transition-colors duration-200"
                             onClick={() => setShowErrorModal(false)}
                         >

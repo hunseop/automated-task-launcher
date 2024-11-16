@@ -193,7 +193,7 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
     };
 
     return (
-        <div className="mt-4">
+        <div className="mt-4 max-w-full">
             {isExpanded && (
                 <div className="flex items-center space-x-4 mb-4">
                     <div className="flex-grow relative">
@@ -202,23 +202,27 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
                             value={globalFilter ?? ''}
                             onChange={e => setGlobalFilter(e.target.value)}
                             placeholder="Search in all columns..."
-                            className="w-full px-4 py-2 rounded-lg border border-gray-200 
+                            className="w-full px-4 py-2 rounded-lg 
+                                     border border-gray-200 dark:border-gray-600
                                      focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                     bg-white/50 placeholder-gray-400"
+                                     bg-white/50 dark:bg-gray-800/50 
+                                     placeholder-gray-400 dark:placeholder-gray-500
+                                     text-gray-900 dark:text-gray-100"
                         />
-                        <svg className="w-5 h-5 absolute right-3 top-2.5 text-gray-400" 
+                        <svg className="w-5 h-5 absolute right-3 top-2.5 text-gray-400 dark:text-gray-500" 
                              fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
                                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
                     <button
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm 
-                                 hover:bg-blue-700 transition-all duration-200 flex items-center space-x-2
-                                 whitespace-nowrap"
+                        className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg 
+                                 shadow-sm hover:shadow-md hover:bg-blue-700 dark:hover:bg-blue-600
+                                 transition-all duration-200 flex items-center space-x-2
+                                 active:transform active:scale-95"
                         onClick={handleDownload}
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
                                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
@@ -227,92 +231,124 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
                 </div>
             )}
 
-            {/* 테이블 영역 - 최대 높이 제한 및 스크롤 추가 */}
-            <div className="bg-white/60 backdrop-blur-sm rounded-lg border border-blue-100/50 overflow-hidden">
+            <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg 
+                 border border-blue-100/50 dark:border-gray-700/50 overflow-hidden">
                 {isExpanded ? (
-                    <div>
-                        {/* 테이블 컨테이너에 최대 높이 및 스크롤 설정 */}
-                        <div className="max-h-[600px] overflow-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50 sticky top-0 z-10">
-                                    {table.getHeaderGroups().map(headerGroup => (
-                                        <tr key={headerGroup.id}>
-                                            {headerGroup.headers.map(header => (
-                                                <th key={header.id} 
-                                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50"
-                                                >
-                                                    {flexRender(
-                                                        header.column.columnDef.header,
-                                                        header.getContext()
-                                                    )}
-                                                </th>
+                    <>
+                        <div className="max-h-[600px] overflow-y-auto">
+                            <div className="overflow-x-auto">
+                                <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
+                                        <tr>
+                                            {table.getHeaderGroups().map(headerGroup => (
+                                                <tr key={headerGroup.id}>
+                                                    {headerGroup.headers.map(header => (
+                                                        <th key={header.id}
+                                                            className="px-4 py-3 text-left text-xs font-medium 
+                                                             text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                                                        >
+                                                            {flexRender(
+                                                                header.column.columnDef.header,
+                                                                header.getContext()
+                                                            )}
+                                                        </th>
+                                                    ))}
+                                                </tr>
                                             ))}
                                         </tr>
-                                    ))}
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {table.getRowModel().rows.map(row => (
-                                        <tr key={row.id} className="hover:bg-gray-50">
-                                            {row.getVisibleCells().map(cell => (
-                                                <td key={cell.id} 
-                                                    className="px-4 py-2 text-sm text-gray-600 max-w-[300px]"
-                                                >
-                                                    {/* 셀 내용을 div로 감싸서 스크롤 처리 */}
-                                                    <div className="overflow-auto max-h-[100px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-                                                        {typeof cell.getValue() === 'string' ? (
-                                                            <div className="whitespace-pre-wrap break-words">
-                                                                {cell.getValue()}
-                                                            </div>
-                                                        ) : (
-                                                            flexRender(
-                                                                cell.column.columnDef.cell,
-                                                                cell.getContext()
-                                                            )
+                                    </thead>
+                                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                        {table.getRowModel().rows.map(row => (
+                                            <tr key={row.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors duration-150">
+                                                {row.getVisibleCells().map(cell => (
+                                                    <td key={cell.id}
+                                                        className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 
+                                                         whitespace-nowrap"
+                                                    >
+                                                        {flexRender(
+                                                            cell.column.columnDef.cell,
+                                                            cell.getContext()
                                                         )}
-                                                    </div>
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-
-                        {/* 페이지네이션을 테이블 밖으로 이동 */}
-                        <div className="border-t border-gray-200 bg-white py-4 px-4">
-                            <div className="flex items-center justify-center space-x-2">
+                        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 
+                                      flex items-center justify-between">
+                            <div className="flex-1 flex justify-between sm:hidden">
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        table.previousPage();
-                                    }}
+                                    onClick={() => table.previousPage()}
                                     disabled={!table.getCanPreviousPage()}
-                                    className="px-3 py-1 border rounded-lg disabled:opacity-50 
-                                             disabled:cursor-not-allowed hover:bg-gray-50
-                                             transition-colors duration-200"
+                                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 
+                                             dark:border-gray-600 text-sm font-medium rounded-md 
+                                             text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800
+                                             hover:bg-gray-50 dark:hover:bg-gray-700
+                                             disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Previous
                                 </button>
-                                <span className="text-sm text-gray-600">
-                                    Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-                                </span>
                                 <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        table.nextPage();
-                                    }}
+                                    onClick={() => table.nextPage()}
                                     disabled={!table.getCanNextPage()}
-                                    className="px-3 py-1 border rounded-lg disabled:opacity-50 
-                                             disabled:cursor-not-allowed hover:bg-gray-50
-                                             transition-colors duration-200"
+                                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 
+                                             dark:border-gray-600 text-sm font-medium rounded-md 
+                                             text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800
+                                             hover:bg-gray-50 dark:hover:bg-gray-700
+                                             disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Next
                                 </button>
                             </div>
+                            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                                        Showing{' '}
+                                        <span className="font-medium">{table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}</span>
+                                        {' '}-{' '}
+                                        <span className="font-medium">
+                                            {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getPrePaginationRowModel().rows.length)}
+                                        </span>
+                                        {' '}of{' '}
+                                        <span className="font-medium">{table.getPrePaginationRowModel().rows.length}</span>
+                                        {' '}results
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" 
+                                         aria-label="Pagination">
+                                        <button
+                                            onClick={() => table.previousPage()}
+                                            disabled={!table.getCanPreviousPage()}
+                                            className="relative inline-flex items-center px-2 py-2 rounded-l-md border 
+                                                     border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 
+                                                     text-sm font-medium text-gray-500 dark:text-gray-400
+                                                     hover:bg-gray-50 dark:hover:bg-gray-700
+                                                     disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Previous
+                                        </button>
+                                        <button
+                                            onClick={() => table.nextPage()}
+                                            disabled={!table.getCanNextPage()}
+                                            className="relative inline-flex items-center px-2 py-2 rounded-r-md border 
+                                                     border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 
+                                                     text-sm font-medium text-gray-500 dark:text-gray-400
+                                                     hover:bg-gray-50 dark:hover:bg-gray-700
+                                                     disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Next
+                                        </button>
+                                    </nav>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </>
                 ) : (
-                    <div className="px-4 py-3 text-sm text-gray-500">
+                    <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                         {data.length} policies available
                     </div>
                 )}
