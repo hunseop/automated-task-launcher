@@ -360,7 +360,7 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                                     {renderContinueButton()}
                                 </div>
                             ) : (
-                                <div className="flex items-center space-x-2">
+                                <div className="flex flex-wrap items-center gap-2 mt-3">
                                     {inputFormat.fields.map(field => renderInputField(field))}
                                     {renderContinueButton()}
                                 </div>
