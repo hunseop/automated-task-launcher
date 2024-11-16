@@ -1,5 +1,5 @@
 // frontend/src/pages/ProjectBoard.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ProjectCard from "../components/ProjectCard";
 
 // ProjectBoard.js - 프로젝트 목록을 관리하고 표시하는 메인 컴포넌트
@@ -25,6 +25,7 @@ const ProjectBoard = () => {
         return savedMode ? savedMode === 'true' : systemDarkMode;
     });
     const [showLimitAlert, setShowLimitAlert] = useState(false);  // 프로젝트 제한 알림 모달 상태 추가
+    const dropdownRef = useRef(null); // 드롭다운 참조 추가
 
     // 다크모드 설정이 변경될 때마다 localStorage에 저장하고 클래스 적용
     useEffect(() => {
@@ -48,6 +49,20 @@ const ProjectBoard = () => {
         
         mediaQuery.addEventListener('change', handleChange);
         return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
+
+    // 드롭다운 외부 클릭 시 닫기
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowDropdown(false); // 드롭다운 닫기
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
     }, []);
 
     // 프로젝트 목록 조회 함수
@@ -253,13 +268,13 @@ const ProjectBoard = () => {
 
                     {/* Project Type Dropdown */}
                     {showDropdown && (
-                        <div className="absolute mt-2 w-64 bg-white/80 dark:bg-gray-800/80 rounded-lg 
+                        <div ref={dropdownRef} className="absolute mt-2 w-64 bg-white/80 dark:bg-gray-800/80 rounded-lg 
                                       shadow-xl border border-blue-100/50 dark:border-gray-700/50
                                       backdrop-blur-md z-20 left-1/2 transform -translate-x-1/2">
                             {projectTypes.map((projectType, index) => (
                                 <div
                                     key={index}
-                                    className="px-4 py-3 hover:bg-gradient-to-r 
+                                    className="px-4 py-3 text-gray-900 dark:text-gray-100 hover:bg-gradient-to-r 
                                              hover:from-blue-50 hover:to-indigo-50 
                                              dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20
                                              cursor-pointer transition-all duration-150
