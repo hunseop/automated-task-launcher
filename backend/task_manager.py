@@ -2,24 +2,20 @@ from typing import Dict, Any, List
 import asyncio
 from datetime import datetime
 from enum import Enum
-from utils.firewall_utils import generate_random_policies, MOCK_FIREWALL_TYPES
+from utils.firewall_utils import generate_random_policies, FIREWALL_TYPES
 import json
 import os
 from pathlib import Path
 import sys
 from firewall_client import FirewallClient
 from uuid import uuid4
-
-# 실행 파일의 위치를 기준으로 절대 경로 설정
-if getattr(sys, 'frozen', False):
-    # PyInstaller로 패키징된 경우
-    BASE_DIR = Path(sys._MEIPASS)
-else:
-    # 개발 환경인 경우
-    BASE_DIR = Path(__file__).parent.parent
+from config import AppConfig
+import logging
+# 로깅 초기화
+AppConfig.init_logging()
 
 # 결과 저장 디렉토리 설정
-RESULT_STORAGE_PATH = BASE_DIR / "storage" / "results"
+RESULT_STORAGE_PATH = AppConfig.RESULT_DIR  # AppConfig에서 가져오기
 try:
     RESULT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
 except PermissionError:
@@ -94,7 +90,7 @@ class TaskManager:
     @staticmethod
     async def handle_firewall_type_selection(params: Dict[str, Any], previous_result: Dict[str, Any] = None) -> Dict[str, Any]:
         fw_type = params.get('type')
-        if not fw_type or fw_type not in MOCK_FIREWALL_TYPES:
+        if not fw_type or fw_type not in FIREWALL_TYPES:
             raise ValueError("Invalid firewall type selected")
 
         return {
@@ -102,7 +98,7 @@ class TaskManager:
             "message": f"Selected firewall type: {fw_type}",
             "data": {
                 "firewall_type": fw_type,
-                "type_info": MOCK_FIREWALL_TYPES[fw_type]
+                "type_info": FIREWALL_TYPES[fw_type]
             }
         }
 
@@ -119,6 +115,7 @@ class TaskManager:
             
             # 성공하면 클라이언트 저장
             TaskManager.firewall_clients[ip] = client
+            logging.info(f"Successfully connected to firewall at {ip}")
             
             return {
                 "success": True,
@@ -132,6 +129,7 @@ class TaskManager:
                 }
             }
         except Exception as e:
+            logging.error(f"Failed to connect to firewall at {ip}: {str(e)}")
             return {
                 "success": False,
                 "message": f"Failed to connect: {str(e)}",
@@ -141,20 +139,24 @@ class TaskManager:
     @staticmethod
     async def handle_config_import(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
         if not previous_result or not previous_result.get('success'):
+            logging.warning("Valid firewall connection required for config import")
             raise ValueError("Valid firewall connection required")
 
         connection_info = previous_result.get('data', {}).get('connection_info')
         if not connection_info:
+            logging.error("Connection information not found")
             raise ValueError("Connection information not found")
 
         ip = connection_info.get('ip')
         client = TaskManager.firewall_clients.get(ip)
         if not client:
+            logging.error("Firewall client not found")
             raise ValueError("Firewall client not found")
 
         try:
             # 저장된 클라이언트를 사용하여 정책 조회
             policies = await client.get_policies()
+            logging.info(f"Successfully extracted {len(policies)} policies from firewall at {ip}")
             
             return {
                 "success": True,
@@ -166,6 +168,7 @@ class TaskManager:
                 }
             }
         except Exception as e:
+            logging.error(f"Failed to import configuration: {str(e)}")
             return {
                 "success": False,
                 "message": f"Failed to import configuration: {str(e)}",
@@ -175,6 +178,7 @@ class TaskManager:
     @staticmethod
     async def handle_policy_processing(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
         if not previous_result or not previous_result.get('success'):
+            logging.warning("Configuration data required for policy processing")
             raise ValueError("Configuration data required")
         
         policies = previous_result.get('data', {}).get('policies', [])
@@ -189,7 +193,8 @@ class TaskManager:
     @staticmethod
     async def handle_shadow_policy_processing(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
         if not previous_result or not previous_result.get('success'):
-            raise ValueError("Policy data required for processing")
+            logging.warning("Policy data required for processing")
+            raise ValueError("Policy data required")
 
         policies = previous_result.get('data', {}).get('policies', [])
         
@@ -256,6 +261,7 @@ class TaskManager:
     @staticmethod
     async def handle_rule_download(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
         if not previous_result or not previous_result.get('success'):
+            logging.warning("Previous task result required")
             raise ValueError("Previous task result required")
         
         # previous_result의 구조 확인
@@ -282,62 +288,82 @@ class TaskManager:
 
     @staticmethod
     async def save_task_result(task_id: str, result_data: dict) -> dict:
-        # 결과 저장 디렉토리 생성
-        task_dir = RESULT_STORAGE_PATH / task_id
-        task_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 전체 데이터는 파일로 저장
-        result_file = task_dir / "result.json"
-        with open(result_file, 'w') as f:
-            json.dump(result_data.get("data", []), f)
-        
-        # DB에는 요약 정보만 저장
-        summary = {
-            "success": result_data.get("success", False),
-            "total_count": len(result_data.get("data", [])),
-            "message": result_data.get("message", ""),
-            "result_file": str(result_file)
-        }
-        
-        return summary
+        """태스크 결과를 저장하는 메서드"""
+        try:
+            # AppConfig에서 경로 가져오기
+            task_dir = AppConfig.RESULT_DIR / task_id
+            task_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 결과 파일 저장
+            result_file = task_dir / "result.json"
+            with open(result_file, 'w', encoding='utf-8') as f:
+                json.dump(result_data.get("data", []), f, ensure_ascii=False, indent=2)
+            
+            return {
+                "success": True,
+                "message": "Result saved successfully",
+                "result_file": str(result_file),
+                "saved_at": datetime.now().isoformat()
+            }
+        except Exception as e:
+            logging.error(f"Failed to save task result: {str(e)}")
+            raise
 
     @staticmethod
-    async def get_task_result(task_id: str, load_full_data: bool = False) -> dict:
-        result_file = RESULT_STORAGE_PATH / task_id / "result.json"
-        if not result_file.exists():
-            return None
+    async def get_task_result(task_id: str) -> dict:
+        """태스크 결과를 조회하는 메서드"""
+        try:
+            result_file = AppConfig.RESULT_DIR / task_id / "result.json"
+            if not result_file.exists():
+                logging.warning(f"Result file not found for task ID: {task_id}")
+                return {
+                    "success": False,
+                    "message": "Result file not found",
+                    "data": None
+                }
             
-        if load_full_data:
-            with open(result_file, 'r') as f:
-                return json.load(f)
-        
-        # 기본적으로는 요약 정보만 반환
-        return {
-            "result_file": str(result_file)
-        }
+            with open(result_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return {
+                    "success": True,
+                    "data": data,
+                    "result_file": str(result_file)
+                }
+        except Exception as e:
+            logging.error(f"Failed to get task result: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Error loading result: {str(e)}",
+                "data": None
+            }
 
     @staticmethod
     async def handle_input_target_rules(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
         if not previous_result or not previous_result.get('success'):
+            logging.warning("Configuration data required")
             raise ValueError("Configuration data required")
 
         text = params.get('text')
         if not text:
+            logging.warning("Please enter rule names")
             raise ValueError("Please enter rule names")
 
         text = text.strip()
         if not text:
+            logging.warning("Please enter rule names")
             raise ValueError("Please enter rule names")
 
         # 콤마로 구분된 정책명 파싱
         rule_names = [name.strip() for name in text.split(',') if name.strip()]
         if not rule_names:
+            logging.warning("Please enter valid rule names separated by commas")
             raise ValueError("Please enter valid rule names separated by commas")
 
         # 원본 정책 데이터 확인
         original_policies = previous_result.get('data', {}).get('policies', [])
         if not original_policies:
-            raise ValueError("No policy data available for analysis")
+            logging.warning("No policy data available for analysis")
+            raise ValueError("No policy data available")
 
         # 입력된 정책명이 실제 존재하는지 확인
         existing_rule_names = {policy['rulename'] for policy in original_policies}
@@ -346,8 +372,10 @@ class TaskManager:
 
         if not valid_rules:
             if invalid_rules:
+                logging.warning(f"None of the entered rule names exist. Invalid rules: {', '.join(invalid_rules)}")
                 raise ValueError(f"None of the entered rule names exist. Invalid rules: {', '.join(invalid_rules)}")
             else:
+                logging.warning("No valid rule names provided")
                 raise ValueError("No valid rule names provided")
 
         if invalid_rules:
@@ -374,6 +402,7 @@ class TaskManager:
     @staticmethod
     async def handle_impact_analysis(params: Dict[str, Any], previous_result: Dict[str, Any]) -> Dict[str, Any]:
         if not previous_result or not previous_result.get('success'):
+            logging.warning("Target rules required for analysis")
             raise ValueError("Target rules required for analysis")
 
         rule_names = previous_result.get('data', {}).get('rule_names', [])
@@ -386,6 +415,7 @@ class TaskManager:
         ]
 
         if not target_policies:
+            logging.warning("No matching policies found")
             raise ValueError("No matching policies found")
 
         # 결과를 단순화하여 PolicyTable에서 표시할 수 있는 형태로 변환
@@ -572,6 +602,7 @@ TASK_TYPE_HANDLERS = {
 def get_task_type_info(task_type: TaskType) -> Dict:
     task_config = TASK_TYPE_HANDLERS.get(task_type)
     if not task_config:
+        logging.warning(f"No task type configuration found for {task_type}")
         return None
     
     return {

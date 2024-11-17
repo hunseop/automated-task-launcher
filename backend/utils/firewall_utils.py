@@ -2,20 +2,17 @@ from typing import List, Dict, Any
 import random
 
 # 방화벽 타입 정의
-MOCK_FIREWALL_TYPES = {
+FIREWALL_TYPES = {
     "paloalto": {
         "name": "Paloalto",
-        "api_version": "v1",
         "connection_type": "api"
     },
     "mf2": {
         "name": "MF2",
-        "api_version": "v2",
         "connection_type": "ssh"
     },
     "ngf": {
         "name": "NGF",
-        "api_version": "v1",
         "connection_type": "api"
     }
 }
@@ -51,7 +48,7 @@ def generate_random_policies(count: int = 30000) -> List[Dict[str, Any]]:
 # 방화벽 연결 시뮬레이션 함수
 def simulate_firewall_connection(ip: str, id: str, pw: str, fw_type: str) -> bool:
     # 테스트용 자격증명
-    return ip == "1.1.1.1" and id == "admin" and pw == "1234" and fw_type in MOCK_FIREWALL_TYPES
+    return ip == "1.1.1.1" and id == "admin" and pw == "1234" and fw_type in FIREWALL_TYPES
 
 # 정책 위험도 평가 함수
 def assess_policy_risk(policy: Dict[str, Any]) -> str:

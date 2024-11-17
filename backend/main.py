@@ -6,50 +6,28 @@ from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-import asyncio
-from uuid import uuid4
 import json
-import os
 from pathlib import Path
 import traceback
-import shutil
 from contextlib import contextmanager
-import sys
+import logging
+from uuid import uuid4
+
+# AppConfig 임포트
+from config import AppConfig
 
 # 프로젝트 관련 임포트
 from projects import project_templates
 from task_manager import TASK_TYPE_HANDLERS, get_task_type_info, TaskType, TaskManager
 
-# 결과 저장 디렉토리 설정
-RESULT_STORAGE_PATH = Path("../storage/results")
-RESULT_STORAGE_PATH.mkdir(parents=True, exist_ok=True)
+# FastAPI 앱 설정
+app = FastAPI(title="Automated Task Launcher")
 
-# 실행 파일 위치 기준으로 절대 경로 설정
-if getattr(sys, 'frozen', False):
-    # PyInstaller로 패키징된 경우
-    BASE_DIR = Path(sys._MEIPASS).parent
-else:
-    # 개발 환경인 경우
-    BASE_DIR = Path(__file__).parent.parent
-
-# 사용자 홈 디렉토리에 저장소 생성
-USER_DATA_DIR = Path.home() / '.fpat'
-STORAGE_DIR = USER_DATA_DIR / 'storage'
-RESULT_DIR = STORAGE_DIR / 'results'
-DB_DIR = USER_DATA_DIR / 'database'
-
-try:
-    DB_DIR.mkdir(parents=True, exist_ok=True)
-except PermissionError:
-    DB_DIR = Path.home() / ".fpat" / "database"
-    DB_DIR.mkdir(parents=True, exist_ok=True)
-
-# 디렉토리 생성
-for directory in [USER_DATA_DIR, STORAGE_DIR, RESULT_DIR, DB_DIR]:
-    directory.mkdir(parents=True, exist_ok=True)
+# 로그 디렉토리 및 로깅 설정
+AppConfig.init_logging()
 
 # 데이터베이스 URL 설정
-DATABASE_URL = f"sqlite:///{DB_DIR}/atl.db"
+DATABASE_URL = f"sqlite:///{AppConfig.DB_DIR}/firewall_policies.db"
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -108,18 +86,13 @@ def get_db():
     finally:
         db.close()
 
-# FastAPI 앱 설정
-app = FastAPI(title="Automated Task Launcher")
-
-# CORS 미들웨어 설정 수정
+# CORS 미들웨어 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],  # 두 주소 모두 허용
+    allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,
 )
 
 # 에러 핸들러
@@ -136,8 +109,7 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 async def get_projects():
     with get_db() as db:
         try:
-            # 데이터베이스가 존재하는지 확인
-            if not os.path.exists("../database/atl.db"):
+            if not Path(AppConfig.DB_DIR / "firewall_policies.db").exists():
                 Base.metadata.create_all(bind=engine)
             
             projects = db.query(Project).order_by(Project.created_at.desc()).all()
@@ -161,12 +133,9 @@ async def get_projects():
                 for project in projects
             ]
         except Exception as e:
-            print(f"Error in get_projects: {str(e)}")
-            print(f"Traceback: {traceback.format_exc()}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Database error: {str(e)}"
-            )
+            logging.error(f"Error in get_projects: {str(e)}")
+            logging.error(f"Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.post("/projects")
 def create_project(project: ProjectCreate):
@@ -300,7 +269,6 @@ async def update_task(request: UpdateTaskRequest):
                 # 최종 결과인 경우 파일로 저장
                 is_final_task = current_task.name in ["Process Policies", "Process Shadow Policies", "Process Impact Analysis"]
                 if is_final_task and result.get("success", False):
-                    # TaskManager를 통해 결과 저장
                     summary = await TaskManager.save_task_result(current_task.id, result)
                     current_task.result_path = summary.get("result_file")
                     current_task.result_summary = {
@@ -310,7 +278,6 @@ async def update_task(request: UpdateTaskRequest):
                         "type": result.get("type", "text")
                     }
                 else:
-                    # 중간 태스크는 메모리와 DB에만 저장
                     current_task.result_summary = {
                         "success": result.get("success", False),
                         "message": result.get("message", ""),
@@ -318,10 +285,7 @@ async def update_task(request: UpdateTaskRequest):
                         "type": result.get("type", "text")
                     }
                 
-                if result.get("success", False):
-                    current_task.status = "Completed"
-                else:
-                    current_task.status = "Error"
+                current_task.status = "Completed" if result.get("success", False) else "Error"
                 
                 # 프로젝트 상태 업데이트
                 all_tasks = db.query(Task).filter(Task.project_id == project.id).all()
@@ -418,20 +382,33 @@ async def delete_project(project_id: str):
             db.rollback()
             raise HTTPException(status_code=500, detail=str(e))
 
-# 데이터베이스 초기화 함수
-def init_db():
-    try:
-        # database 디렉토리 생성
-        os.makedirs("../database", exist_ok=True)
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        print(f"Error initializing database: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
-
-# 앱 시작 시 실행
+# FastAPI 앱 초기화 시 디렉토리 생성
 @app.on_event("startup")
 async def startup_event():
-    init_db()
+    """애플리케이션 시작 시 초기화"""
+    try:
+        AppConfig.init_directories()
+        logging.info("Application directories initialized successfully")
+        
+        AppConfig.init_logging()
+        
+        AppConfig.init_db()
+        
+    except Exception as e:
+        logging.error(f"Application startup failed: {str(e)}")
+        raise
+
+# 결과 저장 함수 수정
+async def save_result(project_id: str, result_data: dict):
+    """프로젝트 결과를 저장"""
+    try:
+        result_file = AppConfig.RESULT_DIR / f"project_{project_id}.json"
+        with open(result_file, 'w', encoding='utf-8') as f:
+            json.dump(result_data, f, ensure_ascii=False, indent=2)
+        return str(result_file)
+    except Exception as e:
+        logging.error(f"Failed to save result for project {project_id}: {str(e)}")
+        raise
 
 # 앱 종료 시 실행
 @app.on_event("shutdown")
