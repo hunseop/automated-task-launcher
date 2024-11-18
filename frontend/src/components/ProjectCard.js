@@ -166,7 +166,7 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                         <div className="border-t border-gray-100 dark:border-gray-700 
                                     bg-white/60 dark:bg-gray-800/60 p-4 overflow-x-auto">
                             <div className="min-w-0 w-full">
-                                <ProjectResultCard result={resultData} />
+                                <ProjectResultCard result={resultData} projectInfo={project.name} />
                             </div>
                         </div>
                     )}

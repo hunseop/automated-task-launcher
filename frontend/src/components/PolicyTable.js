@@ -22,98 +22,37 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
         return [];
     }, [policies]);
     
-    const columns = useMemo(
-        () => [
-            columnHelper.accessor('vsys', {
-                header: 'VSYS',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('seq', {
-                header: 'Sequence',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('rulename', {
-                header: 'Rule Name',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('action', {
-                header: 'Action',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('source', {
-                header: 'Source',
-                cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
-            }),
-            columnHelper.accessor('destination', {
-                header: 'Destination',
-                cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
-            }),
-            columnHelper.accessor('service', {
-                header: 'Service',
-                cell: info => Array.isArray(info.getValue()) ? info.getValue().join(', ') : info.getValue(),
-            }),
-            columnHelper.accessor('risk_level', {
-                header: 'Risk Level',
-                cell: info => (
-                    <span className={
-                        info.getValue() === 'high' ? 'text-red-600' :
-                        info.getValue() === 'medium' ? 'text-yellow-600' :
-                        'text-green-600'
-                    }>
-                        {info.getValue()}
-                    </span>
-                ),
-            }),
-            columnHelper.accessor('description', {
-                header: 'Description',
-                cell: info => (
-                    <div className="max-w-md truncate" title={info.getValue()}>
-                        {info.getValue()}
-                    </div>
-                ),
-            }),
-            columnHelper.accessor('last_hit', {
-                header: 'Last Hit',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('hit_count', {
-                header: 'Hit Count',
-                cell: info => info.getValue().toLocaleString(),
-            }),
-            columnHelper.accessor('created_by', {
-                header: 'Created By',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('created_date', {
-                header: 'Created Date',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('modified_by', {
-                header: 'Modified By',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('modified_date', {
-                header: 'Modified Date',
-                cell: info => info.getValue(),
-            }),
-            columnHelper.accessor('tags', {
-                header: 'Tags',
-                cell: info => (
-                    <div className="flex flex-wrap gap-1">
-                        {Array.isArray(info.getValue()) && info.getValue().map((tag, index) => (
-                            <span 
-                                key={index}
-                                className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800"
-                            >
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-                ),
-            }),
-        ],
-        []
-    );
+    const columns = useMemo(() => {
+        if (!data || data.length === 0) return [];
+
+        const keys = Object.keys(data[0]);
+        return keys.map(key => {
+            return columnHelper.accessor(key, {
+                header: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+                cell: info => {
+                    const value = info.getValue();
+                    if (Array.isArray(value)) {
+                        return (
+                            <>
+                                {value.map((item, index) => (
+                                    <div key={index}>{item}</div>
+                                ))}
+                            </>
+                        );
+                    }
+                    if (typeof value === 'object' && value !== null) {
+                        if (Array.isArray(value.overlapping_sources)) {
+                            return value.overlapping_sources.map((source, index) => (
+                                <div key={index}>{source}</div>
+                            ));
+                        }
+                        return JSON.stringify(value);
+                    }
+                    return value;
+                },
+            });
+        });
+    }, [data]);
 
     const table = useReactTable({
         data,
@@ -164,16 +103,16 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
     }, [data]);
 
     const handleDownload = () => {
-        const exportData = data.map(policy => ({
-            'VSYS': policy.vsys || '',
-            'Sequence': policy.seq || '',
-            'Rule Name': policy.rulename || '',
-            'Action': policy.action || '',
-            'Source': Array.isArray(policy.source) ? policy.source.join(', ') : '',
-            'Destination': Array.isArray(policy.destination) ? policy.destination.join(', ') : '',
-            'Service': Array.isArray(policy.service) ? policy.service.join(', ') : '',
-            'Risk Level': policy.risk_level || ''
-        }));
+        // 동적으로 모든 필드를 포함하여 exportData 생성
+        const exportData = data.map(policy => {
+            const formattedPolicy = {};
+            Object.keys(policy).forEach(key => {
+                // 언더스코어를 공백으로 변경하여 헤더 이름을 설정
+                const headerName = key.replace(/_/g, ' ').charAt(0).toUpperCase() + key.slice(1);
+                formattedPolicy[headerName] = Array.isArray(policy[key]) ? policy[key].join(',') : policy[key];
+            });
+            return formattedPolicy;
+        });
 
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
@@ -183,10 +122,9 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
         
-        // 프로젝트명과 타입으 파일명 생성
-        const projectName = projectInfo?.name || 'unknown';
-        const projectType = projectInfo?.type || 'unknown';
-        const fileName = `${dateStr}_${projectName}_${projectType}.xlsx`;
+        // 프로젝트명과 타입으로 파일명 생성
+        const projectName = projectInfo || 'unknown';
+        const fileName = `${dateStr}_${projectName}.xlsx`;
 
         XLSX.writeFile(wb, fileName);
     };
@@ -260,7 +198,7 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
                                                 {row.getVisibleCells().map(cell => (
                                                     <td key={cell.id}
                                                         className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 
-                                                         whitespace-nowrap"
+                                                                 whitespace-nowrap align-top"
                                                     >
                                                         {flexRender(
                                                             cell.column.columnDef.cell,
