@@ -152,7 +152,6 @@ class TestFirewallProcess:
         # 잘못된 연결 정보로 데이터 추출 시도
         result = mock_data_extraction({"type": "invalid_type"})
         assert result["success"] is False
-
     def test_policy_processing_failure(self, mock_policy_processing):
         # 빈 정책 데이터로 처리 시도
         result = mock_policy_processing([])

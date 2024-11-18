@@ -126,7 +126,6 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
     });
-
     // 통계 정보 계산 수정
     const stats = useMemo(() => {
         const safeData = Array.isArray(data) ? data : [];
@@ -239,23 +238,21 @@ const PolicyTable = ({ policies, isExpanded, projectInfo }) => {
                             <div className="overflow-x-auto">
                                 <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
-                                        <tr>
-                                            {table.getHeaderGroups().map(headerGroup => (
-                                                <tr key={headerGroup.id}>
-                                                    {headerGroup.headers.map(header => (
-                                                        <th key={header.id}
-                                                            className="px-4 py-3 text-left text-xs font-medium 
-                                                             text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                                                        >
-                                                            {flexRender(
-                                                                header.column.columnDef.header,
-                                                                header.getContext()
-                                                            )}
-                                                        </th>
-                                                    ))}
-                                                </tr>
-                                            ))}
-                                        </tr>
+                                        {table.getHeaderGroups().map(headerGroup => (
+                                            <tr key={headerGroup.id}>
+                                                {headerGroup.headers.map(header => (
+                                                    <th key={header.id}
+                                                        className="px-4 py-3 text-left text-xs font-medium 
+                                                                 text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                                                    >
+                                                        {flexRender(
+                                                            header.column.columnDef.header,
+                                                            header.getContext()
+                                                        )}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        ))}
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                         {table.getRowModel().rows.map(row => (
