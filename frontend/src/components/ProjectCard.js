@@ -64,6 +64,20 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
         fetchResultData();
     }, [project.id, project.status, isOpen]);
 
+    useEffect(() => {
+        // 모든 태스크가 완료되었는지 확인
+        const allTasksCompleted = project.tasks?.every(task => task.status === 'Completed');
+        if (allTasksCompleted) {
+            // 0.5초 후에 아코디언 닫기
+            const timer = setTimeout(() => {
+                setIsTasksOpen(false);
+            }, 500); // 500ms = 0.5초
+
+            // 클린업 함수: 컴포넌트가 언마운트되거나 tasks가 변경될 때 타이머를 정리
+            return () => clearTimeout(timer);
+        }
+    }, [project.tasks]); // tasks가 변경될 때마다 확인
+
     return (
         <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg 
             transition-all duration-300 border border-blue-100/50 dark:border-gray-700/50
