@@ -167,6 +167,7 @@ const ProjectCard = ({ project, onDelete, onUpdateTask }) => {
                                                 projectId={project.id}
                                                 previousTask={index > 0 ? project.tasks[index - 1] : null}
                                                 onUpdate={updateTaskStatus}
+                                                index={index}
                                             />
                                         ))}
                                     </div>

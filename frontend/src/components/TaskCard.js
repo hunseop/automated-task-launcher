@@ -1,10 +1,10 @@
 // frontend/src/components/TaskCard.js
 import React, { useState, useEffect, useCallback } from "react";
-import PolicyTable from "./PolicyTable";
-import ProjectResultCard from "./ProjectResultCard";
+// import PolicyTable from "./PolicyTable";
+// import ProjectResultCard from "./ProjectResultCard";
 import { createPortal } from "react-dom";
 
-const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
+const TaskCard = ({ task, projectId, previousTask, onUpdate ,index}) => {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -18,11 +18,11 @@ const TaskCard = ({ task, projectId, previousTask, onUpdate }) => {
                 setIsOpen(true);
             }
         } else {
-            if (task.name === "Select a Firewall Type") {
+            if (index === 0) {
                 setIsOpen(true);
             }
         }
-    }, [previousTask, task.name, previousTask?.status]);
+    }, [previousTask, index, previousTask?.status]);
 
     const handleInputChange = (fieldName, value) => {
         if (!fieldName) return;
